@@ -121,7 +121,7 @@ Fechadura inteligente, ainda não comprada. **Requisito de compra:** modelo com 
 - **Marca e domínio** vêm do Hub SaaS (projeto separado, em desenvolvimento). O Hub fornece só isso: login, pagamentos e cadastro continuam neste sistema.
 - **Endereço: subdomínio** do Hub (ex.: sala.seuhub.com.br). Deploy independente, apenas um registro de DNS, sem depender do código do Hub.
 - **Captação:**
-  - **Página pública da sala** (fase 1): fotos, localização, o que está incluso, preços, disponibilidade e acesso ao cadastro.
+  - **Página pública da sala** (fase 1): fotos, localização, o que está incluso, preços e acesso ao cadastro. A agenda só aparece depois do login (ver [jornadas-e-telas.md](jornadas-e-telas.md), D1).
   - **Indicação e redes sociais:** link compartilhável para Instagram, WhatsApp e indicações.
   - **Google:** SEO na página e Perfil da Empresa no Google.
   - **Marketplaces de anúncio** (ex.: SalaJá, que diz não cobrar comissão), apontando para a página pública.
@@ -177,6 +177,7 @@ Fechadura inteligente, ainda não comprada. **Requisito de compra:** modelo com 
 - Agenda da esposa independente do iConsultório; dias bloqueados manualmente.
 - Sem nota fiscal, caução ou taxa de cadastro.
 - Cobrança recorrente no cartão fica para a fase 2.
+- Decisões de jornada (D1 a D8: agenda só com login, prazos, série de 60 dias, notificação por e-mail, contas de Anfitrião, uso de crédito) em [jornadas-e-telas.md](jornadas-e-telas.md), seção 6.
 
 ## 11. Perguntas em aberto
 
