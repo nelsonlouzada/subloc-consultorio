@@ -1,0 +1,144 @@
+# Plano de entregas do MVP (rascunho v0.1)
+
+Data: 2026-10-17 · Base: [visao.md](visao.md), [jornadas-e-telas.md](jornadas-e-telas.md), [modelo-de-dados.md](modelo-de-dados.md), [arquitetura.md](arquitetura.md).
+
+## 1. Princípios do fatiamento
+
+1. **Cada etapa termina no ar** (Railway, produção) e é usável por alguém. Nada de "tudo pronto só no fim".
+2. **Uso real o quanto antes.** As duas amigas interessadas começam a reservar na **Etapa 2**, com pagamento por Pix manual: a regra de pagar antes de confirmar continua valendo, só que o Anfitrião confirma o recebimento na mão. Assim a agenda, as regras e os e-mails são testados com gente de verdade antes de integrar o Asaas.
+3. **Riscos primeiro.** O que pode derrubar o projeto (conta Asaas de pessoa física, restrições de conflito no banco, fuso horário) é testado logo no início.
+4. **Lançamento público só no fim** (Etapa 6), quando a página pública, as configurações e o financeiro estiverem completos.
+
+## 2. Visão geral
+
+```mermaid
+flowchart LR
+    E0["E0 Fundação"] --> E1["E1 Agenda do Anfitrião"]
+    E1 --> E2["E2 Reserva com Pix manual<br/>(uso real com as amigas)"]
+    E2 --> E3["E3 Cancelamento e carteira"]
+    E3 --> E4["E4 Pagamento online (Asaas)"]
+    E4 --> E5["E5 Séries recorrentes"]
+    E5 --> E6["E6 Lançamento público"]
+```
+
+| Etapa | Entrega | Quem usa ao fim | Tamanho relativo |
+|---|---|---|---|
+| E0 | Projeto no ar com login | Só vocês | P |
+| E1 | Agenda com bloqueios e regras | Vocês (agenda da esposa) | M |
+| E2 | Reserva avulsa ponta a ponta, Pix manual | Vocês + as 2 amigas | G |
+| E3 | Cancelamento, remarcação e créditos | Idem | M |
+| E4 | Pix e cartão automáticos, banco de horas, recibos | Idem | G |
+| E5 | Séries recorrentes com pacote do mês | Idem | M |
+| E6 | Página pública, configurações completas, financeiro | Qualquer Profissional | G |
+
+## 3. Etapas
+
+### E0. Fundação
+**Objetivo:** a base técnica funcionando em produção.
+- Repositório Next.js + TypeScript, Tailwind + shadcn/ui, lint, verificação de tipos, Vitest.
+- PostgreSQL local em Docker; Drizzle com a primeira migração.
+- Railway: serviço **web**, serviço **worker** (pg-boss, um job de teste) e Postgres com backup.
+- Better Auth: login, logout, recuperação de senha, verificação de e-mail; papéis `anfitriao` e `profissional`. As duas contas de Anfitrião (D7) criadas por script.
+- Resend ligado (e-mail de verificação).
+- Sentry e tabela `evento_auditoria` (o registro começa desde já; a tela vem depois).
+- CI no GitHub: lint, tipos e testes a cada push.
+- **Teste de risco:** abrir a conta **Asaas sandbox** e confirmar, por um script, criação de cliente com CPF, cobrança Pix e recebimento do webhook. Se algo bloquear pessoa física, sabemos agora.
+
+**Pronto quando:** vocês dois entram no sistema pelo endereço de produção, e o teste do Asaas sandbox passou.
+
+### E1. Agenda do Anfitrião
+**Objetivo:** a agenda da sala existe e já serve para vocês.
+- Tabelas de espaço, regras, turnos e preços, com os valores iniciais carregados por seed (a tela completa de configuração fica para a E6).
+- Tabela `ocupacao` com as **duas restrições EXCLUDE** e testes de integração: conflito, trava de 1h nos dois sentidos, mesmo Profissional emendando, turnos seguidos, bloqueio indisponível sem trava, **dois pedidos simultâneos**.
+- Bloqueios **uso próprio** e **indisponível**, com repetição ("toda segunda e quarta, 07h–12h").
+- **T21 Agenda** (semana e mês) e **T20 Início** em versão inicial.
+- Testes de fuso: horários perto da meia-noite e das trocas de turno.
+
+**Pronto quando:** os atendimentos da esposa estão lançados como bloqueios e a agenda mostra a sala real.
+
+### E2. Reserva avulsa com Pix manual (primeiro uso real)
+**Objetivo:** as duas amigas reservam, pagam e entram na sala.
+- **Contrato e termo** (`documento_legal` + `aceite`), com texto provisório.
+- **Cadastro do Profissional** (T02), cadastro pendente com aviso (D2), aprovação de cadastro (T23 inicial) com link para o site do conselho.
+- **Reservar** (T10) por hora, turno ou dia; **regra do menor preço** com testes; **resumo do pedido** (T11) com aceite do termo.
+- **Solicitações** (T22): aprovar e recusar; aprovação conjunta de cadastro + pedidos.
+- **Prazos encadeados** (D3) e jobs de expiração no worker.
+- **Pagamento manual:** ao aprovar, o e-mail traz a chave Pix e o valor; o Anfitrião marca "pago" em T24. Fica gravado como `cobranca` com meio `pix_manual` (ver seção 5).
+- **Código de acesso** digitado pelo Anfitrião em T24, enviado por e-mail, guardado até o fim da reserva (T2).
+- **Minhas reservas** (T13) e **detalhe** (T14); **lembrete da véspera** (D6); demais e-mails da tabela de notificações.
+- **T20 Início** com as pendências (cadastros, solicitações, códigos a enviar, pagamentos expirando).
+
+**Pronto quando:** uma das amigas fez uma reserva real do pedido até a entrada na sala.
+
+### E3. Cancelamento, remarcação e carteira
+**Objetivo:** imprevistos resolvidos pelo sistema, sem conversa por fora.
+- **Carteira** em lotes com validade (`credito_lote`, `credito_movimento`) e testes de consumo pela validade (D8) e de concorrência.
+- **Cancelamento** pelo Profissional com prévia do crédito pela política (100%, 50%, 0%); cancelamento pelo Anfitrião com crédito integral; registro de **falta**.
+- **Remarcação** como atalho (cancela e abre Reservar com o crédito).
+- **Usar crédito** no pedido, ligado por padrão; reserva paga 100% com crédito é confirmada direto na aprovação.
+- **Crédito manual** do Anfitrião; jobs de **aviso de vencimento** e **vencimento**.
+- **T15 Carteira** (saldo, validades, extrato).
+
+**Pronto quando:** um cancelamento real gerou crédito e esse crédito pagou uma nova reserva.
+
+### E4. Pagamento online (Asaas)
+**Objetivo:** fim da conferência manual de Pix.
+- Cliente e cobrança no Asaas ao aprovar; **T12 Pagamento** com QR Pix e copia-e-cola; cartão pela página de fatura do Asaas.
+- **Webhook** autenticado e idempotente (`webhook_evento`); confirmação automática; **pagamento atrasado** (T1).
+- **Recibo** numerado com PDF.
+- **Banco de horas:** pacotes de crédito com bônus, comprados em T15 e pagos pelo Asaas.
+- O Pix manual continua disponível como exceção do Anfitrião.
+
+**Pronto quando:** uma reserva real foi paga por Pix e confirmada sem ninguém tocar no sistema.
+
+### E5. Séries recorrentes
+**Objetivo:** horário fixo semanal ou quinzenal.
+- Pedido de série em T10/T11: dias, frequência, data final (até 60 dias), lista de ocorrências indisponíveis.
+- Aprovação da série inteira em T22.
+- **Pacote do mês** (10% de desconto, uma cobrança com vários itens) ou **por ocorrência** (cobrança gerada pelo worker antes de cada data).
+- Cancelamento de ocorrência pela política, com crédito sobre o valor com desconto.
+- **Renovar série** (D4) com aviso perto do fim.
+
+**Pronto quando:** uma amiga tem horário fixo pago como pacote do mês.
+
+### E6. Lançamento público
+**Objetivo:** abrir para qualquer Profissional.
+- **T01 Página da sala** com SEO (título, descrição, dados estruturados de local), fotos no **Cloudflare R2**, preços e funcionamento, sem agenda (D1).
+- **T26 Configurações** completa: sala e página, funcionamento e turnos, preços e pacotes, regras e prazos, cancelamento, contrato e termo com versões, pagamento, usuários Anfitrião.
+- **T25 Financeiro**: resumo do mês, lançamentos, extrato por Profissional, créditos em aberto, recibos, **exportação mensal para o carnê-leão**.
+- T23 completa (bloquear Profissional, histórico, carteira) e tela de auditoria.
+- Política de privacidade e textos finais de contrato e termo **revisados por advogado**.
+- Subdomínio definitivo do Hub; Perfil da Empresa no Google; anúncio em marketplaces de salas.
+
+**Pronto quando:** um Profissional desconhecido achou a página, se cadastrou e reservou.
+
+## 4. Pendências externas (não são código)
+
+| Pendência | Necessária antes de | Responsável |
+|---|---|---|
+| Conta Asaas **sandbox** | E0 (teste de risco) | Vocês |
+| Ler o contrato de locação: o proprietário permite sublocar? | **E2** (primeiro uso real) | Vocês |
+| Texto provisório de contrato e termo | E2 | Vocês, com rascunho meu |
+| **Domínio com DNS** para o Resend enviar a terceiros (SPF/DKIM) | **E2** | Vocês / Hub SaaS |
+| Fechadura comprada (com API) ou código fixo provisório | E2 | Vocês |
+| Conversa com o contador (carnê-leão, Pix como PF, crédito vendido antes do uso) | E4 | Vocês |
+| Conta Asaas de **produção** verificada | E4 | Vocês |
+| Advogado: contrato, termo e política de privacidade | **E6** | Vocês |
+| Licenças do consultório para outros profissionais | E6 | Vocês |
+
+O Resend só envia para endereços de terceiros com um **domínio verificado**. Se o subdomínio do Hub não estiver pronto até a E2, dá para verificar um domínio provisório.
+
+## 5. Ajustes no modelo de dados
+
+- `cobranca.meio` ganha o valor **`pix_manual`** (E2): cobrança marcada como paga pelo Anfitrião, com `pago_em` e quem marcou.
+
+## 6. O que fica para depois do MVP (fase 2)
+
+Cobrança recorrente no cartão, código automático na fechadura, WhatsApp, integração com Google Agenda ou iConsultório, Profissionais de confiança com aprovação automática.
+
+## 7. Definição de pronto (vale para toda etapa)
+
+- No ar em produção, testado no celular.
+- Regras de negócio da etapa com testes automatizados; CI verde.
+- Migrações aplicadas sem perder dados.
+- Documentos em `docs/` atualizados com o que mudou.

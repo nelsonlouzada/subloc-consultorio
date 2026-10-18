@@ -130,7 +130,7 @@ Conferindo com as regras:
 
 ### 3.6 Cobrança
 
-**cobranca**: `id`, `profissional_id`, `finalidade` (`reserva` | `pacote_mes` | `ocorrencia` | `compra_credito`), `valor_bruto_centavos`, `desconto_centavos`, `credito_usado_centavos`, `valor_cobrado_centavos`, `status` (`pendente` | `paga` | `expirada` | `cancelada` | `estornada`), `meio` (`pix` | `cartao` | `credito`), `asaas_cobranca_id` (único), `asaas_link_fatura`, `pix_copia_cola`, `vence_em`, `pago_em`.
+**cobranca**: `id`, `profissional_id`, `finalidade` (`reserva` | `pacote_mes` | `ocorrencia` | `compra_credito`), `valor_bruto_centavos`, `desconto_centavos`, `credito_usado_centavos`, `valor_cobrado_centavos`, `status` (`pendente` | `paga` | `expirada` | `cancelada` | `estornada`), `meio` (`pix` | `cartao` | `credito` | `pix_manual`; o último é marcado como pago pelo Anfitrião, ver [plano-de-entregas.md](plano-de-entregas.md)), `marcada_paga_por`, `asaas_cobranca_id` (único), `asaas_link_fatura`, `pix_copia_cola`, `vence_em`, `pago_em`.
 
 **cobranca_item**: `id`, `cobranca_id`, `reserva_id` ou `pacote_credito_id`, `valor_centavos`. Uma cobrança de pacote do mês tem um item por ocorrência.
 
