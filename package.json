@@ -13,10 +13,15 @@
     "db:gerar": "drizzle-kit generate",
     "db:migrar": "drizzle-kit migrate",
     "worker": "tsx worker/index.ts",
-    "anfitrioes:criar": "tsx scripts/criar-anfitrioes.ts"
+    "anfitrioes:criar": "tsx scripts/criar-anfitrioes.ts",
+    "teste:asaas": "tsx scripts/teste-asaas.ts",
+    "teste:email": "tsx scripts/teste-email.ts",
+    "teste:sentry": "tsx scripts/teste-sentry.ts"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
+    "@sentry/nextjs": "^11.8.0",
+    "@sentry/node": "^11.8.0",
     "better-auth": "^1.7.10",
     "date-fns": "^4.4.0",
     "drizzle-orm": "^0.45.4",
