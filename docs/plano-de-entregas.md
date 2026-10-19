@@ -145,11 +145,11 @@ Cobrança recorrente no cartão, código automático na fechadura, WhatsApp, int
 
 ## 8. Andamento (atualizado em 2026-10-19)
 
-**E0 concluída.** No ar em  (web + worker + Postgres), com login dos dois Anfitriões validado em produção, Resend, Sentry, CI verde e repositório em .
+**E0 concluída.** No ar em `web-production-b82ba.up.railway.app` (web + worker + Postgres), com login dos dois Anfitriões validado em produção, Resend, Sentry, CI verde e repositório em `nelsonlouzada/subloc-consultorio`.
 
-**Teste de risco do Asaas sandbox: aprovado.** Cliente com CPF, cobrança Pix, QR Code com copia-e-cola e webhook (5 envios com resposta 200 em produção, token conferido, idempotência por ). Pessoa física não é bloqueio. A chave Pix da conta é pré-requisito para gerar o QR Code.
+**Teste de risco do Asaas sandbox: aprovado.** Cliente com CPF, cobrança Pix, QR Code com copia-e-cola e webhook (5 envios com resposta 200 em produção, token conferido, idempotência por `webhook_evento`). Pessoa física não é bloqueio. A chave Pix da conta é pré-requisito para gerar o QR Code.
 
-Pendências da E0 (não bloqueiam a E1): confirmar  no log do worker; desligar o TCP Proxy público do Postgres; verificar um domínio no Resend antes da E2.
+Pendências da E0 (não bloqueiam a E1): confirmar `[worker] no ar` no log do worker; desligar o TCP Proxy público do Postgres; verificar um domínio no Resend antes da E2.
 
 Lições da implantação (valem para as próximas etapas):
 - Variável no Railway com **espaço no nome** (colada junto) é descartada em silêncio. Conferir tamanho e presença das variáveis antes de culpar o código.
