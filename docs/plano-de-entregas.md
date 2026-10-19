@@ -142,3 +142,18 @@ Cobrança recorrente no cartão, código automático na fechadura, WhatsApp, int
 - Regras de negócio da etapa com testes automatizados; CI verde.
 - Migrações aplicadas sem perder dados.
 - Documentos em `docs/` atualizados com o que mudou.
+
+## 8. Andamento (atualizado em 2026-10-19)
+
+**E0 quase concluída.** No ar em `web-production-b82ba.up.railway.app` (web + worker + Postgres), com login dos dois Anfitriões validado em produção, Resend, Sentry, CI verde e repositório em `nelsonlouzada/subloc-consultorio`.
+
+Falta para fechar a E0:
+- Teste de risco do Asaas sandbox: cliente com CPF e cobrança Pix funcionaram; o QR Code exige chave Pix cadastrada na conta (o painel do sandbox estava indisponível por excesso de consultas). Faltam também o recebimento do webhook (precisa da URL de produção na configuração do webhook) e o pagamento simulado.
+- Confirmar `[worker] no ar` no log do worker em produção.
+
+Lições da implantação (valem para as próximas etapas):
+- Variável no Railway com **espaço no nome** (colada junto) é descartada em silêncio. Conferir tamanho e presença das variáveis antes de culpar o código.
+- O build automático do Railway (Railpack) falhou com "secret not found"; o `Dockerfile` próprio resolveu e é usado pelos dois serviços.
+- Valor com `#` em `.env` precisa de aspas (vira comentário).
+- No PowerShell, `npm` pode ser bloqueado pela política de execução: usar `npm.cmd`.
+- Porta 5432 local já era de outro Postgres: o banco deste projeto usa a 5433.
