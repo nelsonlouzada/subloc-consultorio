@@ -16,7 +16,8 @@
     "anfitrioes:criar": "tsx scripts/criar-anfitrioes.ts",
     "teste:asaas": "tsx scripts/teste-asaas.ts",
     "teste:email": "tsx scripts/teste-email.ts",
-    "teste:sentry": "tsx scripts/teste-sentry.ts"
+    "teste:sentry": "tsx scripts/teste-sentry.ts",
+    "seed:espaco": "tsx scripts/seed-espaco.ts"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",

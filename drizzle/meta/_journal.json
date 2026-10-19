@@ -15,6 +15,20 @@
       "when": 1792450573981,
       "tag": "0001_curvy_sentinels",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792453173723,
+      "tag": "0002_agenda_base",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792453185298,
+      "tag": "0003_ocupacao_restricoes",
+      "breakpoints": true
     }
   ]
 }

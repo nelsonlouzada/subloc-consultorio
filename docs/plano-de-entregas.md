@@ -157,3 +157,15 @@ Lições da implantação (valem para as próximas etapas):
 - Valor com `#` em `.env` precisa de aspas (vira comentário).
 - No PowerShell, `npm` pode ser bloqueado pela política de execução: usar `npm.cmd`.
 - Porta 5432 local já era de outro Postgres: o banco deste projeto usa a 5433.
+
+### E1: agenda do Anfitrião (2026-10-19)
+
+Feito e verificado no navegador (desktop e celular), com 32 testes automatizados:
+- Tabelas `espaco`, `regra_espaco`, `turno`, `preco`, `bloqueio` e `ocupacao`, com os valores iniciais carregados por `npm run seed:espaco` (idempotente).
+- As duas restrições `EXCLUDE` (sem sobreposição; trava de 1 h entre ocupantes diferentes) e o `CHECK` de "reserva ou bloqueio" estão em `drizzle/0003_ocupacao_restricoes.sql`. Testes de integração no Postgres real cobrem: trava nos dois sentidos, mesmo ocupante emendando, turnos seguidos, indisponível sem trava, uso próprio com trava, rollback, **20 pedidos simultâneos (passa exatamente um)** e fuso (22h-24h, virada de dia). Conferido removendo a restrição de propósito: 7 testes falham.
+- Bloqueios de uso próprio e indisponível, avulsos ou repetidos ("toda segunda e quarta, 07h-12h"); datas já ocupadas são puladas e avisadas; remoção de um bloqueio ou da repetição inteira.
+- Telas: login (T03 inicial), Início (T20 inicial) e Agenda (T21: semana, mês, criação e remoção de bloqueios).
+
+Para o deploy: o **Pre-deploy Command** do `web` no Railway passa a ser `npm run db:migrar && npm run seed:espaco`, para a sala nascer sozinha em produção.
+
+Fica para depois (E6): fotos, endereço e demais campos da sala, e a tela de configuração das regras.
