@@ -66,3 +66,15 @@ export const eventoAuditoria = pgTable(
   },
   (t) => [index('evento_auditoria_entidade_idx').on(t.entidade, t.entidadeId)],
 );
+
+// Garante que um aviso repetido do Asaas não é processado duas vezes (evento_id único).
+export const webhookEvento = pgTable('webhook_evento', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  provedor: text('provedor', { enum: ['asaas'] }).notNull(),
+  eventoId: text('evento_id').notNull().unique(),
+  tipo: text('tipo').notNull(),
+  payload: jsonb('payload').notNull(),
+  recebidoEm: timestamp('recebido_em', { withTimezone: true }).notNull().defaultNow(),
+  processadoEm: timestamp('processado_em', { withTimezone: true }),
+  erro: text('erro'),
+});
