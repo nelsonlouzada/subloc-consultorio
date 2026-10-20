@@ -7,9 +7,9 @@ import { anfitrioesAtivos, notificar } from '@/modulos/comunicacao/notificar';
 import { documentoVigente } from '@/modulos/configuracao/documentos-iniciais';
 import { carregarTabelaPrecos } from '@/modulos/configuracao/precos';
 import { descreverPeriodo } from './calendario';
-import { carregarOcupacoes, type MotivoIndisponivel, validarPedido } from './disponibilidade';
+import { carregarOcupacoes, type MotivoIndisponivel, type Regras, validarPedido } from './disponibilidade';
 import { ConflitoAgendaError, registrarOcupacao } from './ocupacao';
-import { calcularPreco } from './preco';
+import { type CalculoPreco, calcularPreco } from './preco';
 
 /**
  * Teto de pedidos em aberto (solicitada ou aguardando pagamento) por Profissional. Um pedido
@@ -60,17 +60,24 @@ export const TEXTO_ERRO_RESERVA: Record<ErroReserva, string> = {
 
 const horaDe = (t: string) => Number(t.slice(0, 2));
 
+export type PedidoAvaliado = {
+  regras: Regras;
+  profissionalNome: string;
+  termo: { id: string; versao: number; texto: string };
+  preco: CalculoPreco;
+  prazoAprovacaoAte: Date;
+};
+
 /**
- * Cria um pedido de reserva: valida as regras, calcula o menor preço, retém o horário e
- * registra o aceite do termo, tudo numa transação. Se outro pedido chegar ao mesmo horário
- * no mesmo instante, o banco recusa um deles e nada fica gravado.
+ * Confere um pedido sem gravar nada: status do Profissional, unidade, teto de pedidos, regras
+ * da sala, ocupação, preço e prazo. A tela de resumo usa esta função para mostrar o preço antes
+ * de enviar, e a criação usa a mesma, para os dois nunca divergirem.
  */
-export async function criarReserva(
+export async function avaliarPedido(
   pedido: PedidoReserva,
-  contexto: { ip: string | null; userAgent: string | null },
   agora = new Date(),
-): Promise<ResultadoReserva> {
-  const falha = (erro: ErroReserva): ResultadoReserva => ({ ok: false, erro });
+): Promise<{ ok: true; avaliado: PedidoAvaliado } | { ok: false; erro: ErroReserva }> {
+  const falha = (erro: ErroReserva) => ({ ok: false as const, erro });
 
   const [regras] = await db.select().from(schema.regraEspaco).where(eq(schema.regraEspaco.espacoId, pedido.espacoId));
   if (!regras) return falha('sem_regras');
@@ -115,8 +122,7 @@ export async function criarReserva(
     new Date(pedido.inicio.getTime() - 24 * HORA_MS),
     new Date(pedido.fim.getTime() + 24 * HORA_MS),
   );
-  const ocupante = `prof:${pedido.profissionalId}`;
-  const motivo = validarPedido(regras, ocupacoes, ocupante, pedido.inicio, pedido.fim, agora);
+  const motivo = validarPedido(regras, ocupacoes, `prof:${pedido.profissionalId}`, pedido.inicio, pedido.fim, agora);
   if (motivo) return falha(motivo);
 
   const termo = await documentoVigente('termo_reserva');
@@ -132,10 +138,36 @@ export async function criarReserva(
     ),
   );
 
+  return {
+    ok: true,
+    avaliado: {
+      regras,
+      profissionalNome: prof.nome,
+      termo: { id: termo.id, versao: termo.versao, texto: termo.texto },
+      preco,
+      prazoAprovacaoAte,
+    },
+  };
+}
+
+/**
+ * Cria um pedido de reserva: confere as regras, retém o horário e registra o aceite do termo,
+ * tudo numa transação. Se outro pedido chegar ao mesmo horário no mesmo instante, o banco
+ * recusa um deles e nada fica gravado.
+ */
+export async function criarReserva(
+  pedido: PedidoReserva,
+  contexto: { ip: string | null; userAgent: string | null },
+  agora = new Date(),
+): Promise<ResultadoReserva> {
+  const r = await avaliarPedido(pedido, agora);
+  if (!r.ok) return r;
+  const { regras, preco, termo, prazoAprovacaoAte, profissionalNome } = r.avaliado;
+
   let reservaId: string;
   try {
     reservaId = await db.transaction(async (tx) => {
-      const [r] = await tx
+      const [nova] = await tx
         .insert(schema.reserva)
         .values({
           espacoId: pedido.espacoId,
@@ -154,22 +186,22 @@ export async function criarReserva(
         espacoId: pedido.espacoId,
         inicio: pedido.inicio,
         fim: pedido.fim,
-        ocupante,
+        ocupante: `prof:${pedido.profissionalId}`,
         geraTrava: true,
         travaMinutos: regras.travaMinutos,
-        reservaId: r.id,
+        reservaId: nova.id,
       });
       await tx.insert(schema.aceite).values({
         usuarioId: pedido.profissionalId,
         documentoId: termo.id,
         ip: contexto.ip,
         userAgent: contexto.userAgent,
-        reservaId: r.id,
+        reservaId: nova.id,
       });
-      return r.id;
+      return nova.id;
     });
   } catch (e) {
-    if (e instanceof ConflitoAgendaError) return falha(e.motivo === 'sobreposicao' ? 'ocupado' : 'trava');
+    if (e instanceof ConflitoAgendaError) return { ok: false, erro: e.motivo === 'sobreposicao' ? 'ocupado' : 'trava' };
     throw e;
   }
 
@@ -183,7 +215,7 @@ export async function criarReserva(
   });
 
   const modelo = emailNovaSolicitacao({
-    nome: prof.nome,
+    nome: profissionalNome,
     periodo: descreverPeriodo(pedido.inicio, pedido.fim),
     valor: (preco.valorCentavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
   });

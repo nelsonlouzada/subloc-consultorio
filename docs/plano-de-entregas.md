@@ -183,3 +183,9 @@ Próximos blocos da E2: B (cadastro e aprovação), C (reservar), D (aprovação
 Feito e verificado no navegador (cadastro em 3 passos, e-mail de verificação, login, aviso de cadastro em análise, aprovação pelo Anfitrião): validação de CPF; contrato e termo provisórios (versão 1, a revisar por advogado na E6); aceite com data, IP, navegador e versão; tabela `notificacao` com registro de todo e-mail, sem duplicar e sem derrubar o fluxo quando o envio falha; T02 (cadastro), T23 (lista com filtro por estado e detalhe com link do conselho, aprovar, recusar com motivo, bloquear e desbloquear), área do Profissional com aviso por estado e contador de pendências no menu e no Início. Recusar um cadastro recusa os pedidos em aberto e libera os horários (testado). 101 testes.
 
 Para o uso real: o Resend só entrega ao e-mail da conta até haver domínio verificado; sem isso, as amigas não recebem o e-mail de confirmação e não conseguem entrar. O cadastro não tem limite de tentativas contra cadastros em massa: tratar na E6.
+
+### E2, bloco C: reservar (2026-10-20)
+
+Feito e verificado no navegador (Profissional pendente pede um turno, vê o resumo com preço, aceita o termo e envia; o Anfitrião vê a reserva na agenda): conferência única do pedido (`avaliarPedido`, usada pelo resumo e pela criação), disponibilidade com as mesmas regras do banco (testada contra o Postgres em todas as combinações de início e fim), opções do dia, T10 (semana, turno, hora, dia inteiro, Meus pedidos) e T11 (resumo, como o valor foi calculado, termo com aceite). O preço nunca vem do formulário. Teto de 5 pedidos em aberto por Profissional (decisão de produto a confirmar). 136 testes.
+
+Falta na E2: bloco D (aprovação e prazos), bloco E (pagamento manual e acesso).
