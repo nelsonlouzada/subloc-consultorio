@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
@@ -88,6 +89,12 @@ export default function Login() {
         <Suspense>
           <Formulario />
         </Suspense>
+        <p className="mt-6 border-t border-zinc-200 pt-4 text-center text-sm text-zinc-600">
+          É profissional e quer reservar a sala?{' '}
+          <Link href="/cadastro" className="font-medium text-zinc-900 underline">
+            Cadastre-se
+          </Link>
+        </p>
       </div>
     </main>
   );

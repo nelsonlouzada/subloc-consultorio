@@ -326,3 +326,22 @@ export const aceite = pgTable('aceite', {
   reservaId: uuid('reserva_id').references(() => reserva.id),
   serieId: uuid('serie_id'),
 });
+
+// Todo e-mail enviado pelo sistema deixa uma linha aqui (enviado ou falhou), sem exceção.
+// A chave (tipo, referencia_id, usuario_id) impede que um aviso automático saia duas vezes.
+export const notificacao = pgTable(
+  'notificacao',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    usuarioId: text('usuario_id').notNull().references(() => usuario.id, { onDelete: 'cascade' }),
+    tipo: text('tipo').notNull(),
+    canal: text('canal', { enum: ['email'] }).notNull().default('email'),
+    assunto: text('assunto').notNull(),
+    status: text('status', { enum: ['enviado', 'falhou'] }).notNull(),
+    erro: text('erro'),
+    referenciaTipo: text('referencia_tipo').notNull(),
+    referenciaId: text('referencia_id').notNull(),
+    enviadoEm: timestamp('enviado_em', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('notificacao_tipo_ref_usuario_uq').on(t.tipo, t.referenciaId, t.usuarioId)],
+);

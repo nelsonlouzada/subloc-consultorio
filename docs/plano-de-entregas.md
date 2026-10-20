@@ -177,3 +177,9 @@ Fica para depois (E6): fotos, endereço e demais campos da sala, e a tela de con
 Feito: tabelas `profissional`, `documento_legal`, `aceite`, `reserva`, `cobranca` e `cobranca_item` (migração 0004), com `ocupacao.reserva_id` ligada à reserva. Regra do menor preço em `src/modulos/agenda/preco.ts` (24 testes, incluindo a tabela do modelo de dados e a garantia de que pedir mais horas nunca custa menos) e leitura da tabela vigente em `src/modulos/configuracao/precos.ts`. 62 testes no total.
 
 Próximos blocos da E2: B (cadastro e aprovação), C (reservar), D (aprovação e prazos), E (pagamento manual e acesso).
+
+### E2, bloco B: cadastro e aprovação do Profissional (2026-10-19)
+
+Feito e verificado no navegador (cadastro em 3 passos, e-mail de verificação, login, aviso de cadastro em análise, aprovação pelo Anfitrião): validação de CPF; contrato e termo provisórios (versão 1, a revisar por advogado na E6); aceite com data, IP, navegador e versão; tabela `notificacao` com registro de todo e-mail, sem duplicar e sem derrubar o fluxo quando o envio falha; T02 (cadastro), T23 (lista com filtro por estado e detalhe com link do conselho, aprovar, recusar com motivo, bloquear e desbloquear), área do Profissional com aviso por estado e contador de pendências no menu e no Início. Recusar um cadastro recusa os pedidos em aberto e libera os horários (testado). 101 testes.
+
+Para o uso real: o Resend só entrega ao e-mail da conta até haver domínio verificado; sem isso, as amigas não recebem o e-mail de confirmação e não conseguem entrar. O cadastro não tem limite de tentativas contra cadastros em massa: tratar na E6.

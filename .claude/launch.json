@@ -6,6 +6,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["node_modules/next/dist/bin/next", "dev"],
       "port": 3000
+    },
+    {
+      "name": "web-sem-email",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-r", "./scripts/sem-email.cjs", "node_modules/next/dist/bin/next", "dev"],
+      "port": 3000
     }
   ]
 }

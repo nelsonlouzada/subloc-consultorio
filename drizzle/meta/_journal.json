@@ -36,6 +36,13 @@
       "when": 1792457984375,
       "tag": "0004_reservas_e_cobranca",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792458399287,
+      "tag": "0005_notificacao",
+      "breakpoints": true
     }
   ]
 }

@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
+/* O painel é só claro por enquanto. Sem modo escuro, para a página nunca piscar preto entre
+   duas telas claras nem ficar com fundo escuro atrás dos cartões. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fafafa;
+  --foreground: #18181b;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -10,13 +13,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {

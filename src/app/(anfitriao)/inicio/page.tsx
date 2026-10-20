@@ -4,6 +4,7 @@ import { somarDias, formatarDataISO, type DataLocal } from '@/lib/fuso';
 import { listarAgenda } from '@/modulos/agenda/bloqueio';
 import { hojeLocal, horaTexto, limitesDoDia, nomeDiaCurto } from '@/modulos/agenda/calendario';
 import { carregarSala } from '@/modulos/configuracao/espaco';
+import { contarPendentes } from '@/modulos/identidade/aprovacao';
 
 const TIPO = { uso_proprio: 'Uso próprio', indisponivel: 'Indisponível' } as const;
 
@@ -35,6 +36,7 @@ export default async function Inicio() {
   const sessao = await exigirAnfitriao();
   const sala = await carregarSala();
   const hoje = hojeLocal();
+  const pendentes = await contarPendentes();
 
   return (
     <div className="space-y-6">
@@ -42,10 +44,18 @@ export default async function Inicio() {
 
       <section aria-label="Pendências" className="rounded-2xl border border-zinc-200 bg-white p-4">
         <h2 className="mb-1 font-semibold">O que precisa de ação</h2>
-        <p className="text-sm text-zinc-600">
-          Nenhuma pendência. Cadastros para aprovar, solicitações de reserva, códigos de acesso a enviar e pagamentos
-          prestes a expirar aparecem aqui a partir da próxima etapa.
-        </p>
+        {pendentes > 0 ? (
+          <p className="text-sm">
+            <Link href="/profissionais" className="font-medium underline">
+              {pendentes} {pendentes === 1 ? 'cadastro espera' : 'cadastros esperam'} aprovação
+            </Link>
+          </p>
+        ) : (
+          <p className="text-sm text-zinc-600">
+            Nenhuma pendência. Solicitações de reserva, códigos de acesso a enviar e pagamentos prestes a expirar
+            aparecem aqui nos próximos blocos.
+          </p>
+        )}
       </section>
 
       {sala ? (

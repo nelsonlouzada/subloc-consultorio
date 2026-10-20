@@ -1,9 +1,11 @@
 import Link from 'next/link';
+import BotaoSair from '@/app/BotaoSair';
 import { exigirAnfitriao } from '@/lib/sessao';
-import BotaoSair from './BotaoSair';
+import { contarPendentes } from '@/modulos/identidade/aprovacao';
 
 export default async function LayoutAnfitriao({ children }: { children: React.ReactNode }) {
   const sessao = await exigirAnfitriao();
+  const pendentes = await contarPendentes();
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <header className="border-b border-zinc-200 bg-white">
@@ -15,6 +17,15 @@ export default async function LayoutAnfitriao({ children }: { children: React.Re
             </Link>
             <Link href="/agenda" className="hover:underline">
               Agenda
+            </Link>
+            <Link href="/profissionais" className="hover:underline">
+              Profissionais
+              {pendentes > 0 && (
+                <span className="ml-1 rounded-full bg-amber-200 px-1.5 text-xs text-amber-900">
+                  {pendentes}
+                  <span className="sr-only"> cadastro(s) para aprovar</span>
+                </span>
+              )}
             </Link>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">
