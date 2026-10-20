@@ -22,6 +22,7 @@ const ERROS: Record<string, string> = {
   horario: 'O pedido já expirou e o horário não está mais livre. O pagamento precisa ser resolvido por fora (devolução ou outro horário).',
   estado: 'O estado desta reserva mudou. Confira abaixo e tente de novo.',
   codigo: 'Código inválido. Use de 3 a 20 caracteres: números, letras, * # ou -.',
+  credito_devolvido: 'O crédito que abatia este pedido já voltou para a carteira e o saldo atual não cobre. Resolva com a pessoa por fora antes de marcar.',
   iniciada: 'A reserva já começou e não pode mais ser cancelada.',
 };
 const NOME_ACAO: Record<string, string> = {
@@ -113,6 +114,8 @@ export default async function ReservaDoAnfitriao({
           <p>
             {formatarReais(cobranca.valorCobradoCentavos)} · cobrança {cobranca.status}
             {cobranca.meio === 'pix_manual' && ' · Pix conferido manualmente'}
+            {cobranca.meio === 'credito' && ' · pago com crédito'}
+            {cobranca.creditoUsadoCentavos > 0 && cobranca.meio !== 'credito' && ` · abatido ${formatarReais(cobranca.creditoUsadoCentavos)} de crédito`}
             {cobranca.pagoEm && ` · pago em ${quando(cobranca.pagoEm)}`}
           </p>
           {r.status === 'aguardando_pagamento' && cobranca.venceEm && (

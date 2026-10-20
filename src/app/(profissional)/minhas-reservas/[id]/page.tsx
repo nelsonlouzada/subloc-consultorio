@@ -55,7 +55,8 @@ export default async function DetalheDaReserva({ params }: { params: Promise<{ i
         <section className="space-y-2 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-950">
           <h2 className="font-semibold">Pague por Pix para confirmar</h2>
           <p>
-            Valor: <strong>{formatarReais(r.valorCentavos)}</strong>
+            Valor a pagar: <strong>{formatarReais(cobranca?.valorCobradoCentavos ?? r.valorCentavos)}</strong>
+            {cobranca && cobranca.creditoUsadoCentavos > 0 && ` (já descontados ${formatarReais(cobranca.creditoUsadoCentavos)} do seu crédito)`}
           </p>
           {chave ? (
             <p>

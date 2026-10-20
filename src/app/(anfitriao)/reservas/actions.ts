@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { contextoRequisicao, exigirAnfitriao } from '@/lib/sessao';
 import { CodigoInvalidoError, enviarCodigoAcesso } from '@/modulos/agenda/acesso';
 import { cancelarReserva, ReservaJaIniciadaError } from '@/modulos/agenda/cancelamento';
-import { HorarioIndisponivelError, marcarPago } from '@/modulos/agenda/pagamento';
+import { CreditoInsuficienteError, HorarioIndisponivelError, marcarPago } from '@/modulos/agenda/pagamento';
 import { EstadoReservaError, ReservaNaoEncontradaError } from '@/modulos/agenda/solicitacao';
 
 const id = z.string().uuid();
@@ -28,6 +28,7 @@ export async function marcarPagoAction(formData: FormData) {
     aviso = r.reativada ? 'aviso=pago_reativada' : 'aviso=pago';
   } catch (e) {
     if (e instanceof HorarioIndisponivelError) aviso = 'erro=horario';
+    else if (e instanceof CreditoInsuficienteError) aviso = 'erro=credito_devolvido';
     else if (e instanceof EstadoReservaError || e instanceof ReservaNaoEncontradaError) aviso = 'erro=estado';
     else throw e;
   }

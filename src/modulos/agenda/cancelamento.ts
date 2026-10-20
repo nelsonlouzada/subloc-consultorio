@@ -1,7 +1,7 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { registrarAuditoria } from '@/modulos/auditoria/auditoria';
-import { concederCredito } from '@/modulos/carteira/carteira';
+import { concederCredito, devolverUso } from '@/modulos/carteira/carteira';
 import { emailReservaCancelada } from '@/modulos/comunicacao/modelos';
 import { notificar } from '@/modulos/comunicacao/notificar';
 import { formatarReais } from '@/lib/dinheiro';
@@ -59,6 +59,7 @@ export async function cancelarReserva(
     const pendentes = itens.filter((i) => i.status === 'pendente').map((i) => i.cobrancaId);
     if (pendentes.length) {
       await tx.update(schema.cobranca).set({ status: 'cancelada' }).where(inArray(schema.cobranca.id, pendentes));
+      await devolverUso(tx, reservaId, agora); // o crédito que abateu o pedido volta inteiro
     }
 
     if (!itens.some((i) => i.status === 'paga')) return 0;

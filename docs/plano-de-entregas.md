@@ -104,7 +104,7 @@ flowchart LR
 ### E6. Lançamento público
 **Objetivo:** abrir para qualquer Profissional.
 - **T01 Página da sala** com SEO (título, descrição, dados estruturados de local), fotos no **Cloudflare R2**, preços e funcionamento, sem agenda (D1).
-- **T26 Configurações** completa: sala e página, funcionamento e turnos, preços e pacotes, regras e prazos, cancelamento, contrato e termo com versões, pagamento, usuários Anfitrião.
+- **T26 Configurações** completa: sala e página, funcionamento e turnos, preços e pacotes, regras e prazos, **política de cancelamento** (já guardada em `regra_espaco`: `cancelamento_integral_horas` = 48, `cancelamento_parcial_horas` = 24, `cancelamento_parcial_pct` = 50; a E6 só ganha a tela para editar, e o banco recusa combinações inválidas), contrato e termo com versões, pagamento, usuários Anfitrião.
 - **T25 Financeiro**: resumo do mês, lançamentos, extrato por Profissional, créditos em aberto, recibos, **exportação mensal para o carnê-leão**.
 - T23 completa (bloquear Profissional, histórico, carteira) e tela de auditoria.
 - Política de privacidade e textos finais de contrato e termo **revisados por advogado**.

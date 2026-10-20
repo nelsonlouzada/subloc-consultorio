@@ -28,6 +28,8 @@ export type PedidoReserva = {
   unidade: 'hora' | 'turno' | 'dia';
   /** Obrigatório quando a unidade é 'turno'. */
   turnoId?: string | null;
+  /** "Usar crédito" (D8): ligado por padrão. */
+  usarCredito?: boolean;
 };
 
 export type ErroReserva =
@@ -179,6 +181,7 @@ export async function criarReserva(
           valorCheioCentavos: preco.valorCentavos,
           descontoCentavos: 0,
           valorCentavos: preco.valorCentavos,
+          usarCredito: pedido.usarCredito ?? true,
           prazoAprovacaoAte,
         })
         .returning({ id: schema.reserva.id });

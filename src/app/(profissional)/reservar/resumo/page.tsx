@@ -4,6 +4,7 @@ import { formatarDataISO } from '@/lib/fuso';
 import { formatarReais } from '@/lib/dinheiro';
 import { exigirProfissional } from '@/lib/sessao';
 import { descreverPeriodo, hojeLocal } from '@/modulos/agenda/calendario';
+import { saldoDisponivel } from '@/modulos/carteira/carteira';
 import { avaliarPedido } from '@/modulos/agenda/reserva';
 import { carregarSala, horaInteira } from '@/modulos/configuracao/espaco';
 import { enviarPedidoAction } from '../actions';
@@ -29,6 +30,8 @@ export default async function Resumo({ searchParams }: { searchParams: Promise<P
   if (!r.ok) redirect(`${voltar}&erro=${r.erro}`);
   const { preco, termo, regras } = r.avaliado;
   const d = preco.detalhe;
+  const saldo = await saldoDisponivel(sessao.user.id);
+  const abatimento = Math.min(saldo, preco.valorCentavos);
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
@@ -88,6 +91,18 @@ export default async function Resumo({ searchParams }: { searchParams: Promise<P
         <input type="hidden" name="de" value={busca.de ?? ''} />
         <input type="hidden" name="ate" value={busca.ate ?? ''} />
         <input type="hidden" name="turno" value={busca.turno ?? ''} />
+
+        {saldo > 0 && (
+          <label className="flex items-start gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-950">
+            <input type="hidden" name="usarCreditoVisto" value="1" />
+            <input type="checkbox" name="usarCredito" defaultChecked className="mt-1" />
+            <span>
+              Usar meu crédito (saldo de {formatarReais(saldo)}). O que vence primeiro é usado primeiro. Se o pedido for aprovado, abatemos até{' '}
+              <strong>{formatarReais(abatimento)}</strong>
+              {abatimento >= preco.valorCentavos ? ' e a reserva é confirmada na hora, sem Pix.' : `, e você paga o restante (${formatarReais(preco.valorCentavos - abatimento)}) por Pix.`} O valor final é fechado na aprovação.
+            </span>
+          </label>
+        )}
 
         <div>
           <p id="termo-titulo" className="mb-1 text-sm font-medium">

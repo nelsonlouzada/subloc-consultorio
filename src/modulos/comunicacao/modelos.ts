@@ -51,7 +51,9 @@ ${botao(`${urlBase()}/solicitacoes`, 'Ver solicitações')}`,
 export function emailReservaAprovada(p: {
   nome: string;
   periodo: string;
+  /** Valor que falta pagar por Pix, já descontado o crédito usado. */
   valor: string;
+  creditoUsado?: string | null;
   prazoPagamento: string;
   pix: { chave: string; beneficiario: string } | null;
   reservaId: string;
@@ -66,18 +68,23 @@ export function emailReservaAprovada(p: {
     html: layout(
       'Reserva aprovada',
       `<p>Olá, ${esc(p.nome)}. Seu pedido para <strong>${esc(p.periodo)}</strong> foi aprovado.</p>
+${p.creditoUsado ? `<p>Usamos <strong>${esc(p.creditoUsado)}</strong> do seu crédito neste pedido.</p>` : ''}
 ${pagamento}
 ${botao(`${urlBase()}/minhas-reservas/${encodeURIComponent(p.reservaId)}`, 'Ver a reserva')}`,
     ),
   };
 }
 
-export function emailPagamentoConfirmado(p: { nome: string; periodo: string; valor: string; reservaId: string }) {
+export function emailPagamentoConfirmado(p: { nome: string; periodo: string; valor: string; reservaId: string; credito?: boolean }) {
   return {
-    assunto: 'Pagamento recebido: sua reserva está confirmada',
+    assunto: p.credito ? 'Reserva aprovada e confirmada com seu crédito' : 'Pagamento recebido: sua reserva está confirmada',
     html: layout(
       'Reserva confirmada',
-      `<p>Olá, ${esc(p.nome)}. Recebemos o pagamento de <strong>${esc(p.valor)}</strong> e a sua reserva para <strong>${esc(p.periodo)}</strong> está confirmada.</p>
+      `<p>Olá, ${esc(p.nome)}. ${
+        p.credito
+          ? `Seu pedido foi aprovado e pago com <strong>${esc(p.valor)}</strong> do seu crédito`
+          : `Recebemos o pagamento de <strong>${esc(p.valor)}</strong>`
+      } e a sua reserva para <strong>${esc(p.periodo)}</strong> está confirmada.</p>
 <p>O código de acesso à sala será enviado por e-mail antes do horário.</p>
 ${botao(`${urlBase()}/minhas-reservas/${encodeURIComponent(p.reservaId)}`, 'Ver a reserva')}`,
     ),

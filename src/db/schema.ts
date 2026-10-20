@@ -135,12 +135,22 @@ export const regraEspaco = pgTable('regra_espaco', {
   prazoPagamentoHoras: integer('prazo_pagamento_horas').notNull(),
   corteAntesInicioHoras: integer('corte_antes_inicio_horas').notNull(),
   validadeCreditoDias: integer('validade_credito_dias').notNull(),
+  // Política de cancelamento pelo Profissional (editável na T26, E6): com `integral` horas ou mais
+  // de antecedência volta 100% em crédito; com `parcial` horas ou mais, `parcialPct`%; abaixo, nada.
+  cancelamentoIntegralHoras: integer('cancelamento_integral_horas').notNull().default(48),
+  cancelamentoParcialHoras: integer('cancelamento_parcial_horas').notNull().default(24),
+  cancelamentoParcialPct: integer('cancelamento_parcial_pct').notNull().default(50),
   descontoPacoteMesPct: integer('desconto_pacote_mes_pct').notNull(),
   avisoRenovacaoSerieDias: integer('aviso_renovacao_serie_dias').notNull(),
   horaLembreteVespera: time('hora_lembrete_vespera').notNull(),
   atualizadoPor: text('atualizado_por').references(() => usuario.id),
   atualizadoEm: timestamp('atualizado_em', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  check(
+    'regra_espaco_cancelamento_valido',
+    sql`${t.cancelamentoParcialPct} BETWEEN 0 AND 100 AND ${t.cancelamentoParcialHoras} >= 0 AND ${t.cancelamentoIntegralHoras} >= ${t.cancelamentoParcialHoras}`,
+  ),
+]);
 
 export const turno = pgTable('turno', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -259,6 +269,8 @@ export const reserva = pgTable(
     canceladaPor: text('cancelada_por').references(() => usuario.id),
     canceladaEm: timestamp('cancelada_em', { withTimezone: true }),
     creditoGeradoCentavos: integer('credito_gerado_centavos'),
+    // "Usar crédito" ligado por padrão (D8): na aprovação, o crédito que vence primeiro abate o valor.
+    usarCredito: boolean('usar_credito').notNull().default(true),
     // Guardado até a reserva terminar (o Profissional vê na tela) e apagado depois pelo job horário.
     codigoAcesso: text('codigo_acesso'),
     codigoAcessoEnviadoPor: text('codigo_acesso_enviado_por').references(() => usuario.id),

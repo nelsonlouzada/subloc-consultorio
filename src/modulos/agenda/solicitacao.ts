@@ -1,7 +1,8 @@
 import { and, count, eq, inArray } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { registrarAuditoria } from '@/modulos/auditoria/auditoria';
-import { emailReservaAprovada, emailReservaRecusada } from '@/modulos/comunicacao/modelos';
+import { emailPagamentoConfirmado, emailReservaAprovada, emailReservaRecusada } from '@/modulos/comunicacao/modelos';
+import { usarCredito } from '@/modulos/carteira/carteira';
 import { notificar } from '@/modulos/comunicacao/notificar';
 import { aprovarProfissional, TransicaoInvalidaError } from '@/modulos/identidade/aprovacao';
 import { formatarReais } from '@/lib/dinheiro';
@@ -141,11 +142,23 @@ export async function aprovarReserva(
     Math.min(agora.getTime() + r.horasPagamento * HORA_MS, r.reserva.inicio.getTime() - r.corteHoras * HORA_MS),
   );
 
-  await db.transaction(async (tx) => {
+  const { creditoUsado, valorAPagar } = await db.transaction(async (tx) => {
+    // D8: o crédito que vence primeiro abate o valor. Tudo na mesma transação da decisão: se outra
+    // pessoa decidir o pedido no mesmo instante, nada do crédito é gasto.
+    const creditoUsado = r.reserva.usarCredito
+      ? await usarCredito(tx, { profissionalId: r.reserva.profissionalId, ate: r.reserva.valorCentavos, reservaId }, agora)
+      : 0;
+    const valorAPagar = r.reserva.valorCentavos - creditoUsado;
+    const pagaComCredito = valorAPagar === 0;
+
     // A condição no WHERE garante uma única decisão por pedido, mesmo com dois cliques ao mesmo tempo.
     const mudou = await tx
       .update(schema.reserva)
-      .set({ status: 'aguardando_pagamento', aprovadaPor: anfitriaoId, aprovadaEm: agora, prazoPagamentoAte })
+      .set(
+        pagaComCredito
+          ? { status: 'confirmada', aprovadaPor: anfitriaoId, aprovadaEm: agora, prazoPagamentoAte: null }
+          : { status: 'aguardando_pagamento', aprovadaPor: anfitriaoId, aprovadaEm: agora, prazoPagamentoAte },
+      )
       .where(and(eq(schema.reserva.id, reservaId), eq(schema.reserva.status, 'solicitada')))
       .returning({ id: schema.reserva.id });
     if (mudou.length === 0) throw new EstadoReservaError('já decidida');
@@ -157,11 +170,13 @@ export async function aprovarReserva(
         finalidade: 'reserva',
         valorBrutoCentavos: r.reserva.valorCheioCentavos,
         descontoCentavos: r.reserva.descontoCentavos,
-        valorCobradoCentavos: r.reserva.valorCentavos,
-        venceEm: prazoPagamentoAte,
+        creditoUsadoCentavos: creditoUsado,
+        valorCobradoCentavos: valorAPagar,
+        ...(pagaComCredito ? { status: 'paga' as const, meio: 'credito' as const, pagoEm: agora } : { venceEm: prazoPagamentoAte }),
       })
       .returning({ id: schema.cobranca.id });
     await tx.insert(schema.cobrancaItem).values({ cobrancaId: cobranca.id, reservaId, valorCentavos: r.reserva.valorCentavos });
+    return { creditoUsado, valorAPagar };
   });
 
   await registrarAuditoria({
@@ -169,28 +184,34 @@ export async function aprovarReserva(
     acao: 'reserva_aprovada',
     entidade: 'reserva',
     entidadeId: reservaId,
-    dados: { prazoPagamentoAte: prazoPagamentoAte.toISOString() },
+    dados: { prazoPagamentoAte: prazoPagamentoAte.toISOString(), creditoUsado, valorAPagar },
     ip: opcoes.ip ?? null,
   });
 
-  const m = emailReservaAprovada({
-    nome: r.nome,
-    periodo: descreverPeriodo(r.reserva.inicio, r.reserva.fim),
-    valor: formatarReais(r.reserva.valorCentavos),
-    prazoPagamento: descreverMomento(prazoPagamentoAte),
-    pix: pixManual(),
-    reservaId,
-  });
+  const periodo = descreverPeriodo(r.reserva.inicio, r.reserva.fim);
+  // Paga inteira com crédito: já está confirmada, então o aviso é o de pagamento confirmado.
+  const m =
+    valorAPagar === 0
+      ? emailPagamentoConfirmado({ nome: r.nome, periodo, valor: formatarReais(r.reserva.valorCentavos), reservaId, credito: true })
+      : emailReservaAprovada({
+          nome: r.nome,
+          periodo,
+          valor: formatarReais(valorAPagar),
+          creditoUsado: creditoUsado > 0 ? formatarReais(creditoUsado) : null,
+          prazoPagamento: descreverMomento(prazoPagamentoAte),
+          pix: pixManual(),
+          reservaId,
+        });
   await notificar({
     usuarioId: r.reserva.profissionalId,
     para: r.email,
-    tipo: 'reserva_aprovada',
+    tipo: valorAPagar === 0 ? 'pagamento_confirmado' : 'reserva_aprovada',
     assunto: m.assunto,
     html: m.html,
     referenciaTipo: 'reserva',
     referenciaId: reservaId,
   });
-  return { prazoPagamentoAte };
+  return { prazoPagamentoAte, creditoUsado, valorAPagar, confirmada: valorAPagar === 0 };
 }
 
 /** Recusa um pedido: o horário é liberado na mesma transação e o Profissional é avisado. */

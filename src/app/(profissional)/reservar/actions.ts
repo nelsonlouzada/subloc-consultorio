@@ -46,7 +46,7 @@ export async function enviarPedidoAction(formData: FormData) {
   if (!pedido) redirect(`/reservar?data=${dataQuery}&erro=unidade_invalida`);
 
   // O preço NUNCA vem do formulário: é recalculado aqui, no servidor.
-  const r = await criarReserva(pedido, await contextoRequisicao());
+  const r = await criarReserva({ ...pedido, usarCredito: texto(formData, 'usarCreditoVisto') ? texto(formData, 'usarCredito') === 'on' : true }, await contextoRequisicao());
   if (!r.ok) redirect(`/reservar?data=${dataQuery}&erro=${r.erro}`);
   redirect(`/reservar?data=${dataQuery}&aviso=pedido_enviado`);
 }

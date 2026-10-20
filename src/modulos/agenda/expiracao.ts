@@ -1,6 +1,7 @@
 import { and, eq, inArray, lte } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { registrarAuditoria } from '@/modulos/auditoria/auditoria';
+import { devolverUso } from '@/modulos/carteira/carteira';
 import { emailReservaExpirada } from '@/modulos/comunicacao/modelos';
 import { notificar } from '@/modulos/comunicacao/notificar';
 import { descreverPeriodo } from './calendario';
@@ -43,6 +44,9 @@ export async function expirarPrazos(agora = new Date()): Promise<ResultadoExpira
 
     const todas = [...semAprovacao, ...semPagamento].map((r) => r.id);
     if (todas.length) await tx.delete(schema.ocupacao).where(inArray(schema.ocupacao.reservaId, todas));
+
+    // O crédito que abateu o pedido volta para a carteira quando o pedido expira sem pagamento.
+    for (const r of semPagamento) await devolverUso(tx, r.id, agora);
 
     if (semPagamento.length) {
       const itens = await tx

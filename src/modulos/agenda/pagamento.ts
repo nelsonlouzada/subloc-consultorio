@@ -4,6 +4,7 @@ import { formatarReais } from '@/lib/dinheiro';
 import { registrarAuditoria } from '@/modulos/auditoria/auditoria';
 import { emailPagamentoConfirmado } from '@/modulos/comunicacao/modelos';
 import { notificar } from '@/modulos/comunicacao/notificar';
+import { usarCredito } from '@/modulos/carteira/carteira';
 import { descreverPeriodo } from './calendario';
 import { ConflitoAgendaError, registrarOcupacao } from './ocupacao';
 import { EstadoReservaError, ReservaNaoEncontradaError } from './solicitacao';
@@ -13,6 +14,14 @@ export class HorarioIndisponivelError extends Error {
   constructor() {
     super('O pedido já expirou e o horário não está mais livre.');
     this.name = 'HorarioIndisponivelError';
+  }
+}
+
+/** O Pix chegou depois da expiração, mas o crédito que abatia o pedido já foi devolvido e não há saldo para abater de novo. */
+export class CreditoInsuficienteError extends Error {
+  constructor() {
+    super('O crédito que abatia este pedido já foi devolvido e o saldo atual não cobre.');
+    this.name = 'CreditoInsuficienteError';
   }
 }
 
@@ -35,6 +44,8 @@ export async function marcarPago(
       reserva: schema.reserva,
       cobrancaId: schema.cobranca.id,
       cobrancaStatus: schema.cobranca.status,
+      valorCobradoCentavos: schema.cobranca.valorCobradoCentavos,
+      creditoUsadoCentavos: schema.cobranca.creditoUsadoCentavos,
       nome: schema.usuario.name,
       email: schema.usuario.email,
       travaMinutos: schema.regraEspaco.travaMinutos,
@@ -69,6 +80,11 @@ export async function marcarPago(
           travaMinutos: r.travaMinutos,
           reservaId,
         });
+        // O crédito que abatia o pedido foi devolvido na expiração: abate de novo, ou desfaz tudo.
+        if (r.creditoUsadoCentavos > 0) {
+          const usado = await usarCredito(tx, { profissionalId: r.reserva.profissionalId, ate: r.creditoUsadoCentavos, reservaId }, agora);
+          if (usado < r.creditoUsadoCentavos) throw new CreditoInsuficienteError();
+        }
       }
       // A condição no WHERE impede marcar duas vezes ou competir com a expiração.
       const mudou = await tx
@@ -92,14 +108,14 @@ export async function marcarPago(
     acao: reativando ? 'pagamento_marcado_apos_expirar' : 'pagamento_marcado',
     entidade: 'reserva',
     entidadeId: reservaId,
-    dados: { valorCentavos: r.reserva.valorCentavos, meio: 'pix_manual' },
+    dados: { valorCentavos: r.valorCobradoCentavos, creditoUsadoCentavos: r.creditoUsadoCentavos, meio: 'pix_manual' },
     ip: opcoes.ip ?? null,
   });
 
   const m = emailPagamentoConfirmado({
     nome: r.nome,
     periodo: descreverPeriodo(r.reserva.inicio, r.reserva.fim),
-    valor: formatarReais(r.reserva.valorCentavos),
+    valor: formatarReais(r.valorCobradoCentavos),
     reservaId,
   });
   await notificar({
