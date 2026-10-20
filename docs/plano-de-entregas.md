@@ -166,6 +166,6 @@ Feito e verificado no navegador (desktop e celular), com 32 testes automatizados
 - Bloqueios de uso próprio e indisponível, avulsos ou repetidos ("toda segunda e quarta, 07h-12h"); datas já ocupadas são puladas e avisadas; remoção de um bloqueio ou da repetição inteira.
 - Telas: login (T03 inicial), Início (T20 inicial) e Agenda (T21: semana, mês, criação e remoção de bloqueios).
 
-Para o deploy: o **Pre-deploy Command** do `web` no Railway passa a ser `npm run db:migrar && npm run seed:espaco`, para a sala nascer sozinha em produção.
+Para o deploy: o **Pre-deploy Command** do `web` no Railway passa a ser `npm run deploy:preparar`, para a sala nascer sozinha em produção.
 
 Fica para depois (E6): fotos, endereço e demais campos da sala, e a tela de configuração das regras.
