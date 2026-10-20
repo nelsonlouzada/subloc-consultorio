@@ -35,6 +35,19 @@ ${botao(`${urlBase()}/profissionais`, 'Ver cadastros')}`,
   };
 }
 
+export function emailNovaSolicitacao(p: { nome: string; periodo: string; valor: string }) {
+  return {
+    assunto: `Nova solicitação de reserva: ${p.nome}`,
+    html: layout(
+      'Nova solicitação de reserva',
+      `<p><strong>${esc(p.nome)}</strong> pediu a sala.</p>
+<p>${esc(p.periodo)} · ${esc(p.valor)}</p>
+<p>O horário já está retido. Aprove ou recuse dentro do prazo.</p>
+${botao(`${urlBase()}/agenda`, 'Ver na agenda')}`,
+    ),
+  };
+}
+
 export function emailCadastroAprovado(nome: string) {
   return {
     assunto: 'Seu cadastro foi aprovado',

@@ -11,6 +11,7 @@ import {
   nomeMes,
   semanasDoMes,
 } from '@/modulos/agenda/calendario';
+import { listarReservasNoPeriodo } from '@/modulos/agenda/reserva';
 import { carregarSala, horaInteira } from '@/modulos/configuracao/espaco';
 import { removerBloqueioAction, removerGrupoAction } from './actions';
 import FormularioBloqueio from './FormularioBloqueio';
@@ -28,6 +29,27 @@ const TIPO: Record<ItemAgenda['tipo'], { nome: string; cor: string }> = {
   indisponivel: { nome: 'Indisponível', cor: 'bg-zinc-200 border-zinc-400 text-zinc-800' },
 };
 
+// Reservas: a cor e o texto dizem em que ponto está (a cor sozinha não basta para quem não enxerga cores).
+const STATUS_RESERVA: Record<string, { nome: string; cor: string }> = {
+  solicitada: { nome: 'Aguardando aprovação', cor: 'bg-amber-100 border-amber-400 text-amber-900' },
+  aguardando_pagamento: { nome: 'Aguardando pagamento', cor: 'bg-orange-100 border-orange-400 text-orange-900' },
+  confirmada: { nome: 'Confirmada', cor: 'bg-green-100 border-green-500 text-green-900' },
+  realizada: { nome: 'Realizada', cor: 'bg-zinc-100 border-zinc-300 text-zinc-700' },
+  falta: { nome: 'Falta', cor: 'bg-red-100 border-red-400 text-red-900' },
+};
+
+/** O que a agenda desenha: um bloqueio ou uma reserva, já com texto e cor. */
+type Linha = {
+  id: string;
+  inicio: Date;
+  fim: Date;
+  titulo: string;
+  detalhe: string | null;
+  cor: string;
+  grupoId: string | null;
+  bloqueio: boolean;
+};
+
 type Busca = { visao?: string; data?: string; aviso?: string; n?: string; conflitos?: string; erro?: string };
 
 function dataDaBusca(texto?: string): DataLocal {
@@ -41,7 +63,7 @@ function dataDaBusca(texto?: string): DataLocal {
 const rotuloDia = (d: DataLocal) => `${nomeDiaCurto(d)} ${String(d.dia).padStart(2, '0')}/${String(d.mes).padStart(2, '0')}`;
 const link = (visao: string, d: DataLocal) => `/agenda?visao=${visao}&data=${formatarDataISO(d)}`;
 
-function itensDoDia(itens: ItemAgenda[], d: DataLocal) {
+function itensDoDia(itens: Linha[], d: DataLocal) {
   const [ini, fim] = limitesDoDia(d);
   return itens.filter((i) => i.inicio < fim && i.fim > ini);
 }
@@ -65,7 +87,34 @@ export default async function Agenda({ searchParams }: { searchParams: Promise<B
   const semanasMes = semanasDoMes(data.ano, data.mes);
   const primeiro = visao === 'semana' ? semana[0] : semanasMes[0][0];
   const ultimo = visao === 'semana' ? semana[6] : semanasMes[semanasMes.length - 1][6];
-  const itens = await listarAgenda(sala.espaco.id, limitesDoDia(primeiro)[0], limitesDoDia(ultimo)[1]);
+  const de = limitesDoDia(primeiro)[0];
+  const ate = limitesDoDia(ultimo)[1];
+  const [bloqueios, reservas] = await Promise.all([
+    listarAgenda(sala.espaco.id, de, ate),
+    listarReservasNoPeriodo(sala.espaco.id, de, ate),
+  ]);
+  const itens: Linha[] = [
+    ...bloqueios.map((b) => ({
+      id: b.id,
+      inicio: b.inicio,
+      fim: b.fim,
+      titulo: TIPO[b.tipo].nome,
+      detalhe: b.motivo,
+      cor: TIPO[b.tipo].cor,
+      grupoId: b.grupoId,
+      bloqueio: true,
+    })),
+    ...reservas.map((r) => ({
+      id: r.id,
+      inicio: r.inicio,
+      fim: r.fim,
+      titulo: `Reserva · ${STATUS_RESERVA[r.status]?.nome ?? r.status}`,
+      detalhe: r.profissional,
+      cor: STATUS_RESERVA[r.status]?.cor ?? TIPO.indisponivel.cor,
+      grupoId: null,
+      bloqueio: false,
+    })),
+  ].sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
 
   const anterior = visao === 'semana' ? somarDias(data, -7) : { ano: data.mes === 1 ? data.ano - 1 : data.ano, mes: data.mes === 1 ? 12 : data.mes - 1, dia: 1 };
   const proximo = visao === 'semana' ? somarDias(data, 7) : { ano: data.mes === 12 ? data.ano + 1 : data.ano, mes: data.mes === 12 ? 1 : data.mes + 1, dia: 1 };
@@ -131,7 +180,7 @@ export default async function Agenda({ searchParams }: { searchParams: Promise<B
   );
 }
 
-function GradeSemana({ dias, itens, abre, fecha, funcionamento, hoje }: { dias: DataLocal[]; itens: ItemAgenda[]; abre: number; fecha: number; funcionamento: number[]; hoje: string }) {
+function GradeSemana({ dias, itens, abre, fecha, funcionamento, hoje }: { dias: DataLocal[]; itens: Linha[]; abre: number; fecha: number; funcionamento: number[]; hoje: string }) {
   const horas = fecha - abre;
   return (
     <section aria-label="Grade da semana" className="hidden overflow-hidden rounded-2xl border border-zinc-200 bg-white md:block">
@@ -170,13 +219,19 @@ function GradeSemana({ dias, itens, abre, fecha, funcionamento, hoje }: { dias: 
                 return (
                   <div
                     key={i.id}
-                    title={`${TIPO[i.tipo].nome}${i.motivo ? ` — ${i.motivo}` : ''}`}
-                    className={`absolute inset-x-0.5 overflow-hidden rounded border px-1 text-xs ${TIPO[i.tipo].cor}`}
+                    title={`${i.titulo}${i.detalhe ? ` — ${i.detalhe}` : ''}`}
+                    className={`absolute inset-x-0.5 overflow-hidden rounded border px-1 text-xs ${i.cor}`}
                     style={{ top: `${((s - ini.getTime()) / total) * 100}%`, height: `${((e - s) / total) * 100}%` }}
                   >
-                    <strong>{TIPO[i.tipo].nome}</strong>
+                    <strong>{i.titulo}</strong>
                     <br />
                     {horaTexto(i.inicio)}–{horaTexto(i.fim)}
+                    {i.detalhe && (
+                      <>
+                        <br />
+                        {i.detalhe}
+                      </>
+                    )}
                   </div>
                 );
               })}
@@ -188,30 +243,32 @@ function GradeSemana({ dias, itens, abre, fecha, funcionamento, hoje }: { dias: 
   );
 }
 
-function ListaSemana({ dias, itens, dataAtual }: { dias: DataLocal[]; itens: ItemAgenda[]; dataAtual: string }) {
+function ListaSemana({ dias, itens, dataAtual }: { dias: DataLocal[]; itens: Linha[]; dataAtual: string }) {
   const comItens = dias.filter((d) => itensDoDia(itens, d).length > 0);
   return (
-    <section aria-label="Bloqueios da semana" className="space-y-3">
-      <h3 className="text-base font-semibold">Bloqueios da semana</h3>
-      {comItens.length === 0 && <p className="text-sm text-zinc-600">Nenhum bloqueio nesta semana.</p>}
+    <section aria-label="Agenda da semana" className="space-y-3">
+      <h3 className="text-base font-semibold">Na semana</h3>
+      {comItens.length === 0 && <p className="text-sm text-zinc-600">Nada marcado nesta semana.</p>}
       {comItens.map((d) => (
         <div key={formatarDataISO(d)} className="rounded-xl border border-zinc-200 bg-white p-3">
           <p className="mb-2 text-sm font-medium">{rotuloDia(d)}</p>
           <ul className="space-y-2">
             {itensDoDia(itens, d).map((i) => (
-              <li key={i.id} className={`flex flex-wrap items-center gap-2 rounded-lg border p-2 text-sm ${TIPO[i.tipo].cor}`}>
+              <li key={i.id} className={`flex flex-wrap items-center gap-2 rounded-lg border p-2 text-sm ${i.cor}`}>
                 <span>
-                  <strong>{TIPO[i.tipo].nome}</strong> · {horaTexto(i.inicio)}–{horaTexto(i.fim)}
-                  {i.motivo ? ` · ${i.motivo}` : ''}
+                  <strong>{i.titulo}</strong> · {horaTexto(i.inicio)}–{horaTexto(i.fim)}
+                  {i.detalhe ? ` · ${i.detalhe}` : ''}
                 </span>
                 <div className="ml-auto flex items-center gap-2">
-                  <form action={removerBloqueioAction}>
-                    <input type="hidden" name="id" value={i.id} />
-                    <input type="hidden" name="data" value={dataAtual} />
-                    <button type="submit" className="rounded border border-current px-2 py-1 text-xs">
-                      Remover
-                    </button>
-                  </form>
+                  {i.bloqueio && (
+                    <form action={removerBloqueioAction}>
+                      <input type="hidden" name="id" value={i.id} />
+                      <input type="hidden" name="data" value={dataAtual} />
+                      <button type="submit" className="rounded border border-current px-2 py-1 text-xs">
+                        Remover
+                      </button>
+                    </form>
+                  )}
                   {i.grupoId && (
                     <details className="text-xs">
                       <summary className="cursor-pointer">Parte de uma repetição</summary>
@@ -234,7 +291,7 @@ function ListaSemana({ dias, itens, dataAtual }: { dias: DataLocal[]; itens: Ite
   );
 }
 
-function GradeMes({ semanas, mes, itens, funcionamento, hoje }: { semanas: DataLocal[][]; mes: number; itens: ItemAgenda[]; funcionamento: number[]; hoje: string }) {
+function GradeMes({ semanas, mes, itens, funcionamento, hoje }: { semanas: DataLocal[][]; mes: number; itens: Linha[]; funcionamento: number[]; hoje: string }) {
   return (
     <section aria-label="Calendário do mês" className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
       <div className="grid grid-cols-7 border-b border-zinc-200 text-center text-xs text-zinc-600">
@@ -254,12 +311,12 @@ function GradeMes({ semanas, mes, itens, funcionamento, hoje }: { semanas: DataL
               <Link
                 key={iso}
                 href={link('semana', d)}
-                aria-label={`${d.dia} de ${nomeMes(d.mes)}${doDia.length ? `, ${doDia.length} bloqueio(s)` : ''}`}
+                aria-label={`${d.dia} de ${nomeMes(d.mes)}${doDia.length ? `, ${doDia.length} item(ns) na agenda` : ''}`}
                 className={`min-h-16 border-l border-zinc-100 p-1.5 text-sm first:border-l-0 ${d.mes !== mes ? 'text-zinc-400' : ''} ${aberto ? '' : 'bg-zinc-50'} ${iso === hoje ? 'ring-2 ring-inset ring-sky-400' : ''}`}
               >
                 {d.dia}
                 {doDia.length > 0 && (
-                  <span className="mt-1 block rounded bg-sky-100 px-1 text-xs text-sky-900">{doDia.length} bloq.</span>
+                  <span className="mt-1 block rounded bg-sky-100 px-1 text-xs text-sky-900">{doDia.length} {doDia.length === 1 ? 'item' : 'itens'}</span>
                 )}
               </Link>
             );

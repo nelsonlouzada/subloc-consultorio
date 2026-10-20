@@ -46,6 +46,13 @@ export const nomeDiaCurto = (d: DataLocal) => DIAS_CURTOS[diaSemanaDe(d) - 1];
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 export const nomeMes = (mes: number) => MESES[mes - 1];
 
+/** 'seg 02/11, 09:00 às 12:00' em hora local da sala (reserva dentro de um mesmo dia). */
+export function descreverPeriodo(inicio: Date, fim: Date): string {
+  const d = hojeLocal(inicio);
+  const dia = `${nomeDiaCurto(d)} ${String(d.dia).padStart(2, '0')}/${String(d.mes).padStart(2, '0')}`;
+  return `${dia}, ${horaTexto(inicio)} às ${horaTexto(fim)}`;
+}
+
 /** '07:30' a partir de um instante, em hora local da sala. */
 export function horaTexto(instante: Date): string {
   const p = partesLocais(instante);

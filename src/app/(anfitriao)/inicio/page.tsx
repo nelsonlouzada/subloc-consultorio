@@ -3,14 +3,26 @@ import { exigirAnfitriao } from '@/lib/sessao';
 import { somarDias, formatarDataISO, type DataLocal } from '@/lib/fuso';
 import { listarAgenda } from '@/modulos/agenda/bloqueio';
 import { hojeLocal, horaTexto, limitesDoDia, nomeDiaCurto } from '@/modulos/agenda/calendario';
+import { listarReservasNoPeriodo } from '@/modulos/agenda/reserva';
 import { carregarSala } from '@/modulos/configuracao/espaco';
 import { contarPendentes } from '@/modulos/identidade/aprovacao';
 
 const TIPO = { uso_proprio: 'Uso próprio', indisponivel: 'Indisponível' } as const;
+const STATUS: Record<string, string> = {
+  solicitada: 'aguardando aprovação',
+  aguardando_pagamento: 'aguardando pagamento',
+  confirmada: 'confirmada',
+  realizada: 'realizada',
+  falta: 'falta',
+};
 
 async function Dia({ titulo, d, espacoId }: { titulo: string; d: DataLocal; espacoId: string }) {
   const [ini, fim] = limitesDoDia(d);
-  const itens = await listarAgenda(espacoId, ini, fim);
+  const [bloqueios, reservas] = await Promise.all([listarAgenda(espacoId, ini, fim), listarReservasNoPeriodo(espacoId, ini, fim)]);
+  const itens = [
+    ...bloqueios.map((b) => ({ id: b.id, inicio: b.inicio, fim: b.fim, texto: `${TIPO[b.tipo]}${b.motivo ? ` · ${b.motivo}` : ''}` })),
+    ...reservas.map((r) => ({ id: r.id, inicio: r.inicio, fim: r.fim, texto: `Reserva (${STATUS[r.status] ?? r.status}) · ${r.profissional}` })),
+  ].sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
   return (
     <section className="rounded-2xl border border-zinc-200 bg-white p-4">
       <h2 className="mb-1 font-semibold">
@@ -22,8 +34,7 @@ async function Dia({ titulo, d, espacoId }: { titulo: string; d: DataLocal; espa
         <ul className="space-y-1 text-sm">
           {itens.map((i) => (
             <li key={i.id}>
-              <strong>{horaTexto(i.inicio)}–{horaTexto(i.fim)}</strong> · {TIPO[i.tipo]}
-              {i.motivo ? ` · ${i.motivo}` : ''}
+              <strong>{horaTexto(i.inicio)}–{horaTexto(i.fim)}</strong> · {i.texto}
             </li>
           ))}
         </ul>
