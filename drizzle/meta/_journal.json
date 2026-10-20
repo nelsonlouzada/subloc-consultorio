@@ -29,6 +29,13 @@
       "when": 1792453185298,
       "tag": "0003_ocupacao_restricoes",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792457984375,
+      "tag": "0004_reservas_e_cobranca",
+      "breakpoints": true
     }
   ]
 }

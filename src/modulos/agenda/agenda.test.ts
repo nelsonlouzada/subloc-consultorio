@@ -32,16 +32,32 @@ async function novoEspaco(): Promise<string> {
   return e.id;
 }
 
-// Ocupa como um Profissional (a tabela de reservas só existe na E2; a ocupação não depende dela).
+// Ocupa como um Profissional: cria a reserva e a ocupação na mesma transação, como o código de
+// produção. O ocupante ('prof:A', 'prof:B') é o que as restrições comparam; a reserva usa um
+// único Profissional de teste, porque o que importa aqui é a regra do banco.
 function ocupar(espacoId: string, prof: string, ini: Date, fim: Date) {
-  return registrarOcupacao(db, {
-    espacoId,
-    inicio: ini,
-    fim,
-    ocupante: `prof:${prof}`,
-    geraTrava: true,
-    travaMinutos: TRAVA,
-    reservaId: randomUUID(),
+  return db.transaction(async (tx) => {
+    const [r] = await tx
+      .insert(schema.reserva)
+      .values({
+        espacoId,
+        profissionalId: usuarioId,
+        inicio: ini,
+        fim,
+        unidade: 'hora',
+        valorCheioCentavos: 5000,
+        valorCentavos: 5000,
+      })
+      .returning({ id: schema.reserva.id });
+    await registrarOcupacao(tx, {
+      espacoId,
+      inicio: ini,
+      fim,
+      ocupante: `prof:${prof}`,
+      geraTrava: true,
+      travaMinutos: TRAVA,
+      reservaId: r.id,
+    });
   });
 }
 
@@ -61,10 +77,20 @@ beforeAll(async () => {
     email: `${usuarioId}@example.com`,
     papel: 'anfitriao',
   });
+  await db.insert(schema.profissional).values({
+    usuarioId,
+    cpf: usuarioId.replace(/\D/g, '').padEnd(11, '0').slice(0, 11) + randomUUID().slice(0, 4),
+    profissao: 'psicologo',
+    conselho: 'CRP',
+    registroNumero: '00000',
+    registroUf: 'SP',
+  });
 });
 
 afterAll(async () => {
+  // O espaço leva junto, em cascata, as reservas, os bloqueios e as ocupações de teste.
   if (espacosCriados.length) await db.delete(schema.espaco).where(inArray(schema.espaco.id, espacosCriados));
+  await db.delete(schema.profissional).where(eq(schema.profissional.usuarioId, usuarioId));
   await db.delete(schema.usuario).where(eq(schema.usuario.id, usuarioId));
   await pool.end();
 });

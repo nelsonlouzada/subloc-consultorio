@@ -171,3 +171,9 @@ Feito e verificado no navegador (desktop e celular), com 32 testes automatizados
 Para o deploy: o **Pre-deploy Command** do `web` no Railway passa a ser `npm run deploy:preparar`, para a sala nascer sozinha em produção.
 
 Fica para depois (E6): fotos, endereço e demais campos da sala, e a tela de configuração das regras.
+
+### E2, bloco A: base de dados e preço (2026-10-19)
+
+Feito: tabelas `profissional`, `documento_legal`, `aceite`, `reserva`, `cobranca` e `cobranca_item` (migração 0004), com `ocupacao.reserva_id` ligada à reserva. Regra do menor preço em `src/modulos/agenda/preco.ts` (24 testes, incluindo a tabela do modelo de dados e a garantia de que pedir mais horas nunca custa menos) e leitura da tabela vigente em `src/modulos/configuracao/precos.ts`. 62 testes no total.
+
+Próximos blocos da E2: B (cadastro e aprovação), C (reservar), D (aprovação e prazos), E (pagamento manual e acesso).
