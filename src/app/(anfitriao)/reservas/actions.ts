@@ -42,7 +42,7 @@ export async function cancelarReservaAction(formData: FormData) {
   let resultado: string;
   try {
     const r = await cancelarReserva(reservaId, sessao.user.id, motivo, { ip });
-    resultado = r.devolucaoPendente ? 'aviso=cancelada_paga' : 'aviso=cancelada';
+    resultado = r.creditoCentavos > 0 ? 'aviso=cancelada_paga' : 'aviso=cancelada';
   } catch (e) {
     if (e instanceof ReservaJaIniciadaError) resultado = 'erro=iniciada';
     else if (e instanceof EstadoReservaError || e instanceof ReservaNaoEncontradaError) resultado = 'erro=estado';

@@ -43,6 +43,13 @@
       "when": 1792458399287,
       "tag": "0005_notificacao",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792523040422,
+      "tag": "0006_loud_husk",
+      "breakpoints": true
     }
   ]
 }

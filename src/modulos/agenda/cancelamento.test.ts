@@ -10,6 +10,7 @@ import { instanteLocal } from '@/lib/fuso';
 import { garantirDocumentosIniciais } from '@/modulos/configuracao/documentos-iniciais';
 import { fabrica } from '@/test/fabrica';
 import { enviarCodigoAcesso } from './acesso';
+import { saldoDisponivel } from '@/modulos/carteira/carteira';
 import { cancelarReserva, ReservaJaIniciadaError } from './cancelamento';
 import { marcarPago } from './pagamento';
 import { criarReserva } from './reserva';
@@ -43,7 +44,7 @@ afterAll(async () => {
 });
 
 describe('cancelamento pelo Anfitrião', () => {
-  it('reserva confirmada: libera o horário, apaga o código e avisa que há devolução a fazer', async () => {
+  it('reserva confirmada: libera o horário, apaga o código e devolve o valor como crédito', async () => {
     const { espacoId } = await f.sala();
     const anf = await f.anfitriao();
     const prof = await f.profissional();
@@ -54,14 +55,17 @@ describe('cancelamento pelo Anfitrião', () => {
     expect((await reserva(id)).codigoAcesso).toBe('4321');
 
     const r = await cancelarReserva(id, anf, '  Obra na sala  ', { ip: '203.0.113.9' }, agora);
-    expect(r).toEqual({ devolucaoPendente: true });
+    expect(r).toEqual({ creditoCentavos: 5000 });
+    expect(await saldoDisponivel(prof, agora)).toBe(5000);
+    expect((await reserva(id)).creditoGeradoCentavos).toBe(5000);
     expect(await reserva(id)).toMatchObject({ status: 'cancelada', codigoAcesso: null, canceladaPor: anf });
     expect((await ocupacoes(id)).length).toBe(0);
     expect((await cobrancaDe(prof)).status).toBe('paga'); // o dinheiro não some do registro
 
     const email = emailsPara(prof).find((e) => e[1].includes('cancelada'))!;
     expect(email[2]).toContain('Obra na sala');
-    expect(email[2]).toContain('devolução');
+    expect(email[2]).toContain('R$ 50,00');
+    expect(email[2]).toContain('carteira');
     const [ev] = await db.select().from(schema.eventoAuditoria).where(eq(schema.eventoAuditoria.acao, 'reserva_cancelada'));
     expect(ev).toBeTruthy();
 
@@ -77,10 +81,11 @@ describe('cancelamento pelo Anfitrião', () => {
     const id = await pedir(espacoId, prof, 11, 12);
     await aprovarReserva(id, anf, {}, agora);
 
-    expect(await cancelarReserva(id, anf, null, {}, agora)).toEqual({ devolucaoPendente: false });
+    expect(await cancelarReserva(id, anf, null, {}, agora)).toEqual({ creditoCentavos: 0 });
+    expect(await saldoDisponivel(prof, agora)).toBe(0);
     expect((await cobrancaDe(prof)).status).toBe('cancelada');
     expect((await ocupacoes(id)).length).toBe(0);
-    expect(emailsPara(prof).find((e) => e[1].includes('cancelada'))![2]).not.toContain('devolução');
+    expect(emailsPara(prof).find((e) => e[1].includes('cancelada'))![2]).not.toContain('carteira');
   });
 
   it('só cancela reserva aprovada ou confirmada, uma vez, e antes de começar', async () => {

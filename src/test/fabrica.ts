@@ -84,6 +84,7 @@ export function fabrica() {
       if (referencias.length) await db.delete(schema.notificacao).where(inArray(schema.notificacao.referenciaId, referencias));
       if (usuarios.length) {
         await db.delete(schema.notificacao).where(inArray(schema.notificacao.usuarioId, usuarios));
+        await db.delete(schema.creditoLote).where(inArray(schema.creditoLote.profissionalId, usuarios)); // movimentos em cascata
         await db.delete(schema.cobranca).where(inArray(schema.cobranca.profissionalId, usuarios)); // itens em cascata
         await db.delete(schema.aceite).where(inArray(schema.aceite.usuarioId, usuarios));
         await db.delete(schema.eventoAuditoria).where(inArray(schema.eventoAuditoria.usuarioId, usuarios));

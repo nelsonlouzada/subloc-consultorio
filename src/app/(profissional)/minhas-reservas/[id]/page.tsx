@@ -95,7 +95,7 @@ export default async function DetalheDaReserva({ params }: { params: Promise<{ i
       {r.status === 'cancelada' && (
         <p className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700">
           Esta reserva foi cancelada pelos responsáveis e o horário foi liberado.
-          {cobranca?.status === 'paga' ? ' Como o pagamento já tinha sido recebido, eles vão entrar em contato sobre a devolução.' : ''}
+          {cobranca?.status === 'paga' ? ` O valor pago${r.creditoGeradoCentavos ? ` (${formatarReais(r.creditoGeradoCentavos)})` : ''} virou crédito na sua carteira.` : ''}
         </p>
       )}
       {r.status === 'expirada' && (

@@ -4,6 +4,7 @@ import { PgBoss } from 'pg-boss';
 import { encerrarReservas } from '../src/modulos/agenda/encerramento';
 import { expirarPrazos } from '../src/modulos/agenda/expiracao';
 import { enviarLembretesDaVespera } from '../src/modulos/agenda/lembretes';
+import { vencerLotes } from '../src/modulos/carteira/carteira';
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN_WORKER,
@@ -66,6 +67,11 @@ async function main() {
   await horaria('lembretes-vespera', 10, async () => {
     const r = await enviarLembretesDaVespera();
     return r.enviados ? `enviou ${r.enviados} lembretes da véspera` : null;
+  });
+
+  await horaria('vencer-creditos', 15, async () => {
+    const n = await vencerLotes();
+    return n ? `venceu ${n} lotes de crédito` : null;
   });
 
   console.log('[worker] no ar');

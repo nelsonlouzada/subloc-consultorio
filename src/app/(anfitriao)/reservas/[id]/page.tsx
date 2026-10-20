@@ -16,7 +16,7 @@ const AVISOS: Record<string, string> = {
   codigo: 'Código enviado ao profissional por e-mail.',
   cancelada: 'Reserva cancelada. O horário foi liberado e o profissional foi avisado por e-mail.',
   cancelada_paga:
-    'Reserva cancelada e o horário liberado. Atenção: o pagamento já tinha sido recebido e a devolução ainda precisa ser feita por você, por fora do sistema.',
+    'Reserva cancelada e o horário liberado. O valor pago virou crédito integral na carteira do profissional.',
 };
 const ERROS: Record<string, string> = {
   horario: 'O pedido já expirou e o horário não está mais livre. O pagamento precisa ser resolvido por fora (devolução ou outro horário).',
@@ -166,7 +166,7 @@ export default async function ReservaDoAnfitriao({
           <h2 className="font-semibold">Cancelar reserva</h2>
           <p className="text-zinc-700">
             O horário é liberado na hora, o código de acesso deixa de valer e o profissional é avisado por e-mail.
-            {r.status === 'confirmada' && ' O pagamento já foi recebido: a devolução fica por sua conta, fora do sistema.'}
+            {r.status === 'confirmada' && ' O pagamento já foi recebido: o valor vira crédito integral na carteira do profissional.'}
           </p>
           <form action={cancelarReservaAction} className="space-y-2">
             <input type="hidden" name="id" value={r.id} />

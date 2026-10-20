@@ -327,6 +327,44 @@ export const aceite = pgTable('aceite', {
   serieId: uuid('serie_id'),
 });
 
+// Carteira de créditos em lotes: cada entrada tem validade própria e o uso consome primeiro o
+// lote que vence antes (D8). O saldo de um lote nunca passa do valor inicial nem fica negativo.
+export const creditoLote = pgTable(
+  'credito_lote',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    profissionalId: text('profissional_id').notNull().references(() => profissional.usuarioId),
+    origem: text('origem', { enum: ['compra', 'cancelamento', 'pagamento_atrasado', 'ajuste_manual'] }).notNull(),
+    valorInicialCentavos: integer('valor_inicial_centavos').notNull(),
+    saldoCentavos: integer('saldo_centavos').notNull(),
+    validadeAte: timestamp('validade_ate', { withTimezone: true }).notNull(),
+    cobrancaId: uuid('cobranca_id').references(() => cobranca.id),
+    reservaId: uuid('reserva_id').references(() => reserva.id),
+    criadoPor: text('criado_por').references(() => usuario.id),
+    criadoEm: timestamp('criado_em', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('credito_lote_saldo_valido', sql`${t.saldoCentavos} >= 0 AND ${t.saldoCentavos} <= ${t.valorInicialCentavos}`),
+    check('credito_lote_valor_positivo', sql`${t.valorInicialCentavos} > 0`),
+    index('credito_lote_profissional_validade_idx').on(t.profissionalId, t.validadeAte),
+  ],
+);
+
+export const creditoMovimento = pgTable(
+  'credito_movimento',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    loteId: uuid('lote_id').notNull().references(() => creditoLote.id, { onDelete: 'cascade' }),
+    tipo: text('tipo', { enum: ['entrada', 'uso', 'devolucao_uso', 'vencimento', 'ajuste'] }).notNull(),
+    valorCentavos: integer('valor_centavos').notNull(), // com sinal: entrada +, uso e vencimento -
+    reservaId: uuid('reserva_id').references(() => reserva.id),
+    cobrancaId: uuid('cobranca_id').references(() => cobranca.id),
+    criadoPor: text('criado_por').references(() => usuario.id),
+    criadoEm: timestamp('criado_em', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('credito_movimento_lote_idx').on(t.loteId)],
+);
+
 // Todo e-mail enviado pelo sistema deixa uma linha aqui (enviado ou falhou), sem exceção.
 // A chave (tipo, referencia_id, usuario_id) impede que um aviso automático saia duas vezes.
 export const notificacao = pgTable(

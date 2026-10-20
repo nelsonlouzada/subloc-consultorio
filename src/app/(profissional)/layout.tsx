@@ -16,6 +16,9 @@ export default async function LayoutProfissional({ children }: { children: React
             <Link href="/minhas-reservas" className="hover:underline">
               Minhas reservas
             </Link>
+            <Link href="/carteira" className="hover:underline">
+              Carteira
+            </Link>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">
             <span className="text-zinc-600">{sessao.user.name}</span>

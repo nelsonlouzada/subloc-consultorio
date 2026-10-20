@@ -1,8 +1,10 @@
 import { and, eq, inArray } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { registrarAuditoria } from '@/modulos/auditoria/auditoria';
+import { concederCredito } from '@/modulos/carteira/carteira';
 import { emailReservaCancelada } from '@/modulos/comunicacao/modelos';
 import { notificar } from '@/modulos/comunicacao/notificar';
+import { formatarReais } from '@/lib/dinheiro';
 import { descreverPeriodo } from './calendario';
 import { EstadoReservaError, ReservaNaoEncontradaError } from './solicitacao';
 
@@ -18,9 +20,8 @@ export class ReservaJaIniciadaError extends Error {
  * O Anfitrião cancela uma reserva aprovada (aguardando pagamento ou confirmada) que ainda não
  * começou. O horário é liberado e o código de acesso apagado na mesma transação.
  *
- * Se o pagamento já tinha sido marcado, o dinheiro NÃO é devolvido aqui (crédito e estorno
- * chegam na E3): o e-mail avisa a pessoa de que os responsáveis vão tratar a devolução, e o
- * retorno diz ao Anfitrião que ficou uma devolução por fazer.
+ * Se o pagamento já tinha sido marcado, o valor pago volta como crédito integral na carteira
+ * (cancelamento pelo Anfitrião não tem desconto), na mesma transação.
  */
 export async function cancelarReserva(
   reservaId: string,
@@ -28,7 +29,7 @@ export async function cancelarReserva(
   motivo: string | null,
   opcoes: { ip?: string | null } = {},
   agora = new Date(),
-): Promise<{ devolucaoPendente: boolean }> {
+): Promise<{ creditoCentavos: number }> {
   const [r] = await db
     .select({ reserva: schema.reserva, nome: schema.usuario.name, email: schema.usuario.email })
     .from(schema.reserva)
@@ -40,7 +41,7 @@ export async function cancelarReserva(
 
   const motivoLimpo = motivo?.trim() ? motivo.trim().slice(0, 500) : null;
 
-  const devolucaoPendente = await db.transaction(async (tx) => {
+  const creditoCentavos = await db.transaction(async (tx) => {
     // A condição no WHERE impede cancelar duas vezes ou competir com a expiração.
     const mudou = await tx
       .update(schema.reserva)
@@ -59,7 +60,17 @@ export async function cancelarReserva(
     if (pendentes.length) {
       await tx.update(schema.cobranca).set({ status: 'cancelada' }).where(inArray(schema.cobranca.id, pendentes));
     }
-    return itens.some((i) => i.status === 'paga');
+
+    if (!itens.some((i) => i.status === 'paga')) return 0;
+    const valor = r.reserva.valorCentavos;
+    if (valor <= 0) return 0;
+    await concederCredito(
+      tx,
+      { profissionalId: r.reserva.profissionalId, espacoId: r.reserva.espacoId, origem: 'cancelamento', valorCentavos: valor, reservaId, criadoPor: anfitriaoId },
+      agora,
+    );
+    await tx.update(schema.reserva).set({ creditoGeradoCentavos: valor }).where(eq(schema.reserva.id, reservaId));
+    return valor;
   });
 
   await registrarAuditoria({
@@ -67,7 +78,7 @@ export async function cancelarReserva(
     acao: 'reserva_cancelada',
     entidade: 'reserva',
     entidadeId: reservaId,
-    dados: { motivo: motivoLimpo, devolucaoPendente, statusAnterior: r.reserva.status },
+    dados: { motivo: motivoLimpo, creditoCentavos, statusAnterior: r.reserva.status },
     ip: opcoes.ip ?? null,
   });
 
@@ -75,7 +86,7 @@ export async function cancelarReserva(
     nome: r.nome,
     periodo: descreverPeriodo(r.reserva.inicio, r.reserva.fim),
     motivo: motivoLimpo,
-    pago: devolucaoPendente,
+    credito: creditoCentavos > 0 ? formatarReais(creditoCentavos) : null,
   });
   await notificar({
     usuarioId: r.reserva.profissionalId,
@@ -86,5 +97,5 @@ export async function cancelarReserva(
     referenciaTipo: 'reserva',
     referenciaId: reservaId,
   });
-  return { devolucaoPendente };
+  return { creditoCentavos };
 }
