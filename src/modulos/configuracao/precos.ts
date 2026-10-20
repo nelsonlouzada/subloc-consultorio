@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, lte, sql } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import type { TabelaPrecos } from '@/modulos/agenda/preco';
 import { horaInteira } from './espaco';
@@ -6,8 +6,12 @@ import { horaInteira } from './espaco';
 /**
  * Tabela de preços vigente: para cada unidade (hora, dia e cada turno ativo), o preço mais
  * recente que já começou a valer. Preços com `vigente_desde` no futuro ficam de fora.
+ *
+ * Sem `agora`, "já começou" é medido pelo relógio do banco, o mesmo que grava `vigente_desde`.
+ * Comparar com o relógio do servidor da aplicação deixaria um preço recém-criado de fora por
+ * alguns milissegundos sempre que os dois relógios divergissem.
  */
-export async function carregarTabelaPrecos(espacoId: string, agora = new Date()): Promise<TabelaPrecos> {
+export async function carregarTabelaPrecos(espacoId: string, agora?: Date): Promise<TabelaPrecos> {
   const turnos = await db
     .select()
     .from(schema.turno)
@@ -17,7 +21,12 @@ export async function carregarTabelaPrecos(espacoId: string, agora = new Date())
   const precos = await db
     .select()
     .from(schema.preco)
-    .where(and(eq(schema.preco.espacoId, espacoId), lte(schema.preco.vigenteDesde, agora)))
+    .where(
+      and(
+        eq(schema.preco.espacoId, espacoId),
+        agora ? lte(schema.preco.vigenteDesde, agora) : sql`${schema.preco.vigenteDesde} <= now()`,
+      ),
+    )
     .orderBy(desc(schema.preco.vigenteDesde));
 
   // A lista vem do mais novo para o mais antigo: o primeiro de cada chave é o vigente.
