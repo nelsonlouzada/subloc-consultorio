@@ -288,6 +288,22 @@ export const reserva = pgTable(
   ],
 );
 
+// Banco de horas: o Profissional paga `valorPago` e recebe `valorCredito` (bônus) na carteira.
+// Sem pacote ativo cadastrado, nada aparece na tela da carteira. Os pacotes são gerenciados na T26 (E6).
+export const pacoteCredito = pgTable(
+  'pacote_credito',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    espacoId: uuid('espaco_id').notNull().references(() => espaco.id, { onDelete: 'cascade' }),
+    nome: text('nome').notNull(),
+    valorPagoCentavos: integer('valor_pago_centavos').notNull(),
+    valorCreditoCentavos: integer('valor_credito_centavos').notNull(),
+    ativo: boolean('ativo').notNull().default(true),
+    criadoEm: timestamp('criado_em', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check('pacote_credito_valores', sql`${t.valorPagoCentavos} > 0 AND ${t.valorCreditoCentavos} >= ${t.valorPagoCentavos}`)],
+);
+
 export const cobranca = pgTable(
   'cobranca',
   {
@@ -307,6 +323,7 @@ export const cobranca = pgTable(
     asaasCobrancaId: text('asaas_cobranca_id').unique(),
     asaasLinkFatura: text('asaas_link_fatura'),
     pixCopiaCola: text('pix_copia_cola'),
+    pixQrImagem: text('pix_qr_imagem'), // PNG em base64, como o Asaas devolve
     venceEm: timestamp('vence_em', { withTimezone: true }),
     pagoEm: timestamp('pago_em', { withTimezone: true }),
     criadoEm: timestamp('criado_em', { withTimezone: true }).notNull().defaultNow(),
@@ -320,7 +337,7 @@ export const cobrancaItem = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     cobrancaId: uuid('cobranca_id').notNull().references(() => cobranca.id, { onDelete: 'cascade' }),
     reservaId: uuid('reserva_id').references(() => reserva.id),
-    pacoteCreditoId: uuid('pacote_credito_id'), // a tabela de pacotes chega na E4
+    pacoteCreditoId: uuid('pacote_credito_id').references(() => pacoteCredito.id),
     valorCentavos: integer('valor_centavos').notNull(),
   },
   (t) => [index('cobranca_item_cobranca_idx').on(t.cobrancaId), index('cobranca_item_reserva_idx').on(t.reservaId)],
@@ -337,6 +354,15 @@ export const aceite = pgTable('aceite', {
   userAgent: text('user_agent'),
   reservaId: uuid('reserva_id').references(() => reserva.id),
   serieId: uuid('serie_id'),
+});
+
+// Recibo numerado de toda cobrança paga (Pix manual, Asaas ou crédito). O PDF é gerado na hora, a partir
+// destes dados; o número é sequencial e nunca se repete nem se reaproveita.
+export const recibo = pgTable('recibo', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  numero: integer('numero').notNull().generatedAlwaysAsIdentity().unique(),
+  cobrancaId: uuid('cobranca_id').notNull().unique().references(() => cobranca.id),
+  emitidoEm: timestamp('emitido_em', { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Carteira de créditos em lotes: cada entrada tem validade própria e o uso consome primeiro o

@@ -56,9 +56,16 @@ export function emailReservaAprovada(p: {
   creditoUsado?: string | null;
   prazoPagamento: string;
   pix: { chave: string; beneficiario: string } | null;
+  /** Pix do Asaas, quando o pagamento online está ligado: confirma sozinho, sem ninguém conferir. */
+  online?: { copiaCola: string; faturaUrl: string | null } | null;
   reservaId: string;
 }) {
-  const pagamento = p.pix
+  const pagamento = p.online
+    ? `<p><strong>Pague por Pix até ${esc(p.prazoPagamento)}:</strong></p>
+<p>Valor: <strong>${esc(p.valor)}</strong></p>
+<p>Pix copia e cola:<br><span style="word-break:break-all;font-family:monospace;font-size:12px">${esc(p.online.copiaCola)}</span></p>
+<p>O QR Code e o pagamento por cartão estão na página da reserva. Assim que o pagamento for reconhecido, a reserva é confirmada automaticamente. Sem pagamento até esse horário, o horário é liberado.</p>`
+    : p.pix
     ? `<p><strong>Pague por Pix até ${esc(p.prazoPagamento)}:</strong></p>
 <p>Valor: <strong>${esc(p.valor)}</strong><br>Chave Pix: <strong>${esc(p.pix.chave)}</strong><br>Favorecido: ${esc(p.pix.beneficiario)}</p>
 <p>Depois do pagamento, os responsáveis confirmam o recebimento e a reserva fica confirmada. Sem pagamento até esse horário, o horário é liberado.</p>`
@@ -146,9 +153,21 @@ export function emailPagamentoAtrasadoVirouCredito(p: { nome: string; periodo: s
     assunto: 'Recebemos seu pagamento: o valor virou crédito',
     html: layout(
       'Pagamento recebido como crédito',
-      `<p>Olá, ${esc(p.nome)}. Recebemos o seu pagamento de <strong>${esc(p.valor)}</strong> para <strong>${esc(p.periodo)}</strong>, mas ele chegou depois do prazo e o horário já não estava livre.</p>
+      `<p>Olá, ${esc(p.nome)}. Recebemos o seu pagamento de <strong>${esc(p.valor)}</strong> para <strong>${esc(p.periodo)}</strong>, mas a reserva já não estava disponível para recebê-lo (o prazo passou e o horário foi ocupado, ou ela foi cancelada).</p>
 <p>O valor total está na sua carteira como crédito e pode ser usado numa nova reserva.</p>
 ${botao(`${urlBase()}/reservar`, 'Escolher outro horário')}`,
+    ),
+  };
+}
+
+export function emailCreditoComprado(p: { nome: string; pacote: string; pago: string; credito: string }) {
+  return {
+    assunto: 'Crédito comprado: já está na sua carteira',
+    html: layout(
+      'Crédito na carteira',
+      `<p>Olá, ${esc(p.nome)}. Recebemos o pagamento de <strong>${esc(p.pago)}</strong> do pacote <strong>${esc(p.pacote)}</strong>.</p>
+<p><strong>${esc(p.credito)}</strong> já estão na sua carteira e são usados automaticamente nos próximos pedidos.</p>
+${botao(`${urlBase()}/carteira`, 'Ver minha carteira')}`,
     ),
   };
 }

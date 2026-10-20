@@ -57,6 +57,13 @@
       "when": 1792523511431,
       "tag": "0007_silent_amphibian",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792529392371,
+      "tag": "0008_supreme_pyro",
+      "breakpoints": true
     }
   ]
 }

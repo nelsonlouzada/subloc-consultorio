@@ -3,6 +3,7 @@ import { db, schema } from '@/db';
 import { registrarAuditoria } from '@/modulos/auditoria/auditoria';
 import { emailPagamentoConfirmado, emailReservaAprovada, emailReservaRecusada } from '@/modulos/comunicacao/modelos';
 import { usarCredito } from '@/modulos/carteira/carteira';
+import { prepararPagamentoOnline } from '@/modulos/cobranca/online';
 import { notificar } from '@/modulos/comunicacao/notificar';
 import { aprovarProfissional, TransicaoInvalidaError } from '@/modulos/identidade/aprovacao';
 import { formatarReais } from '@/lib/dinheiro';
@@ -142,7 +143,7 @@ export async function aprovarReserva(
     Math.min(agora.getTime() + r.horasPagamento * HORA_MS, r.reserva.inicio.getTime() - r.corteHoras * HORA_MS),
   );
 
-  const { creditoUsado, valorAPagar } = await db.transaction(async (tx) => {
+  const { creditoUsado, valorAPagar, cobrancaId } = await db.transaction(async (tx) => {
     // D8: o crédito que vence primeiro abate o valor. Tudo na mesma transação da decisão: se outra
     // pessoa decidir o pedido no mesmo instante, nada do crédito é gasto.
     const creditoUsado = r.reserva.usarCredito
@@ -176,7 +177,7 @@ export async function aprovarReserva(
       })
       .returning({ id: schema.cobranca.id });
     await tx.insert(schema.cobrancaItem).values({ cobrancaId: cobranca.id, reservaId, valorCentavos: r.reserva.valorCentavos });
-    return { creditoUsado, valorAPagar };
+    return { creditoUsado, valorAPagar, cobrancaId: cobranca.id };
   });
 
   await registrarAuditoria({
@@ -189,6 +190,8 @@ export async function aprovarReserva(
   });
 
   const periodo = descreverPeriodo(r.reserva.inicio, r.reserva.fim);
+  // Pix online (Asaas), se ligado; se desligado ou se o Asaas falhar, o e-mail leva os dados do Pix manual.
+  const online = valorAPagar > 0 ? await prepararPagamentoOnline(cobrancaId, `Reserva da sala: ${periodo}`) : null;
   // Paga inteira com crédito: já está confirmada, então o aviso é o de pagamento confirmado.
   const m =
     valorAPagar === 0
@@ -200,6 +203,7 @@ export async function aprovarReserva(
           creditoUsado: creditoUsado > 0 ? formatarReais(creditoUsado) : null,
           prazoPagamento: descreverMomento(prazoPagamentoAte),
           pix: pixManual(),
+          online,
           reservaId,
         });
   await notificar({

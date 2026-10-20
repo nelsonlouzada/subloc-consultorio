@@ -3,6 +3,7 @@ import { db, schema } from '@/db';
 import { formatarReais } from '@/lib/dinheiro';
 import { registrarAuditoria } from '@/modulos/auditoria/auditoria';
 import { concederCredito, usarCredito } from '@/modulos/carteira/carteira';
+import { emitirReciboSemFalhar } from '@/modulos/cobranca/recibo';
 import { emailPagamentoAtrasadoVirouCredito, emailPagamentoConfirmado } from '@/modulos/comunicacao/modelos';
 import { notificar } from '@/modulos/comunicacao/notificar';
 import { descreverPeriodo } from './calendario';
@@ -35,6 +36,23 @@ export type ResultadoPagamento = {
 export async function marcarPago(
   reservaId: string,
   anfitriaoId: string,
+  opcoes: { ip?: string | null } = {},
+  agora = new Date(),
+): Promise<ResultadoPagamento> {
+  return confirmarPagamento(reservaId, { usuarioId: anfitriaoId, meio: 'pix_manual' }, opcoes, agora);
+}
+
+/** Quem confirmou e como: o Anfitrião (Pix manual) ou o sistema, a partir do aviso do Asaas (usuarioId nulo). */
+export type OrigemPagamento = { usuarioId: string | null; meio: 'pix_manual' | 'pix' | 'cartao' };
+
+/**
+ * Regra única de "o dinheiro chegou" para uma reserva, usada pelo Anfitrião (`marcarPago`) e pelo
+ * webhook do Asaas. Confirma a reserva, ou, se o pedido já tinha expirado, reativa (horário livre)
+ * ou transforma o valor em crédito (horário perdido).
+ */
+export async function confirmarPagamento(
+  reservaId: string,
+  quem: OrigemPagamento,
   opcoes: { ip?: string | null } = {},
   agora = new Date(),
 ): Promise<ResultadoPagamento> {
@@ -72,7 +90,7 @@ export async function marcarPago(
     await db.transaction(async (tx) => {
       const mudou = await tx
         .update(schema.cobranca)
-        .set({ status: 'paga', meio: 'pix_manual', marcadaPagaPor: anfitriaoId, pagoEm: agora })
+        .set({ status: 'paga', meio: quem.meio, marcadaPagaPor: quem.usuarioId, pagoEm: agora })
         .where(and(eq(schema.cobranca.id, r.cobrancaId), eq(schema.cobranca.status, 'expirada')))
         .returning({ id: schema.cobranca.id });
       if (mudou.length === 0) throw new EstadoReservaError('já decidida');
@@ -85,13 +103,14 @@ export async function marcarPago(
           valorCentavos: r.valorCobradoCentavos,
           reservaId,
           cobrancaId: r.cobrancaId,
-          criadoPor: anfitriaoId,
+          criadoPor: quem.usuarioId,
         },
         agora,
       );
     });
+    await emitirReciboSemFalhar(r.cobrancaId);
     await registrarAuditoria({
-      usuarioId: anfitriaoId,
+      usuarioId: quem.usuarioId,
       acao: 'pagamento_atrasado_virou_credito',
       entidade: 'reserva',
       entidadeId: reservaId,
@@ -141,7 +160,7 @@ export async function marcarPago(
       if (mudou.length === 0) throw new EstadoReservaError('já decidida');
       await tx
         .update(schema.cobranca)
-        .set({ status: 'paga', meio: 'pix_manual', marcadaPagaPor: anfitriaoId, pagoEm: agora })
+        .set({ status: 'paga', meio: quem.meio, marcadaPagaPor: quem.usuarioId, pagoEm: agora })
         .where(eq(schema.cobranca.id, r.cobrancaId));
     });
   } catch (e) {
@@ -149,12 +168,13 @@ export async function marcarPago(
     throw e;
   }
 
+  await emitirReciboSemFalhar(r.cobrancaId);
   await registrarAuditoria({
-    usuarioId: anfitriaoId,
+    usuarioId: quem.usuarioId,
     acao: reativando ? 'pagamento_marcado_apos_expirar' : 'pagamento_marcado',
     entidade: 'reserva',
     entidadeId: reservaId,
-    dados: { valorCentavos: r.valorCobradoCentavos, creditoUsadoCentavos: r.creditoUsadoCentavos, meio: 'pix_manual' },
+    dados: { valorCentavos: r.valorCobradoCentavos, creditoUsadoCentavos: r.creditoUsadoCentavos, meio: quem.meio },
     ip: opcoes.ip ?? null,
   });
 

@@ -6,6 +6,7 @@ import { exigirProfissional } from '@/lib/sessao';
 import { descreverMomento, descreverPeriodo } from '@/modulos/agenda/calendario';
 import { previaCancelamento } from '@/modulos/agenda/cancelamento';
 import { obterReserva, ROTULO_STATUS } from '@/modulos/agenda/consulta';
+import PagamentoPix from '../../PagamentoPix';
 import { cancelarMinhaReservaAction } from '../actions';
 
 export const metadata = { title: 'Reserva' };
@@ -83,25 +84,44 @@ export default async function DetalheDaReserva({
       {r.status === 'aguardando_pagamento' && (
         <section className="space-y-2 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-950">
           <h2 className="font-semibold">Pague por Pix para confirmar</h2>
-          <p>
-            Valor a pagar: <strong>{formatarReais(cobranca?.valorCobradoCentavos ?? r.valorCentavos)}</strong>
-            {cobranca && cobranca.creditoUsadoCentavos > 0 && ` (já descontados ${formatarReais(cobranca.creditoUsadoCentavos)} do seu crédito)`}
-          </p>
-          {chave ? (
-            <p>
-              Chave Pix: <strong>{chave}</strong>
-              {favorecido ? ` · Favorecido: ${favorecido}` : ''}
-            </p>
+          {cobranca?.pixCopiaCola ? (
+            <>
+              {cobranca.creditoUsadoCentavos > 0 && (
+                <p className="text-xs">Já descontados {formatarReais(cobranca.creditoUsadoCentavos)} do seu crédito.</p>
+              )}
+              <PagamentoPix valorCentavos={cobranca.valorCobradoCentavos} copiaCola={cobranca.pixCopiaCola} qrImagem={cobranca.pixQrImagem} faturaUrl={cobranca.asaasLinkFatura} />
+            </>
           ) : (
-            <p>Os responsáveis vão enviar os dados do pagamento por e-mail.</p>
+            <>
+              <p>
+                Valor a pagar: <strong>{formatarReais(cobranca?.valorCobradoCentavos ?? r.valorCentavos)}</strong>
+                {cobranca && cobranca.creditoUsadoCentavos > 0 && ` (já descontados ${formatarReais(cobranca.creditoUsadoCentavos)} do seu crédito)`}
+              </p>
+              {chave ? (
+                <p>
+                  Chave Pix: <strong>{chave}</strong>
+                  {favorecido ? ` · Favorecido: ${favorecido}` : ''}
+                </p>
+              ) : (
+                <p>Os responsáveis vão enviar os dados do pagamento por e-mail.</p>
+              )}
+            </>
           )}
           {r.prazoPagamentoAte && (
             <p>
               Prazo: até <strong>{descreverMomento(r.prazoPagamentoAte)}</strong>. Sem pagamento até lá, o horário é liberado.
             </p>
           )}
-          <p>Depois do pagamento, os responsáveis confirmam o recebimento e a reserva fica confirmada.</p>
+          {!cobranca?.pixCopiaCola && <p>Depois do pagamento, os responsáveis confirmam o recebimento e a reserva fica confirmada.</p>}
         </section>
+      )}
+
+      {cobranca?.status === 'paga' && cobranca.valorCobradoCentavos > 0 && (
+        <p className="text-sm">
+          <a href={`/api/recibos/${cobranca.id}`} target="_blank" rel="noopener noreferrer" className="underline">
+            Baixar recibo (PDF)
+          </a>
+        </p>
       )}
 
       {r.status === 'confirmada' && (

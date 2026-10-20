@@ -3,6 +3,10 @@ import { formatarReais } from '@/lib/dinheiro';
 import { exigirProfissional } from '@/lib/sessao';
 import { descreverMomento } from '@/modulos/agenda/calendario';
 import { carteiraDoProfissional } from '@/modulos/carteira/carteira';
+import { asaasAtivo } from '@/modulos/cobranca/asaas';
+import { comprasPendentes, listarPacotesAtivos, TEXTO_ERRO_COMPRA, type ErroCompra } from '@/modulos/cobranca/pacotes';
+import { carregarSala } from '@/modulos/configuracao/espaco';
+import { comprarPacoteAction } from './actions';
 
 export const metadata = { title: 'Carteira' };
 
@@ -20,13 +24,24 @@ const MOVIMENTO = {
   ajuste: 'Ajuste',
 } as const;
 
-export default async function Carteira() {
-  const { sessao } = await exigirProfissional();
+export default async function Carteira({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
+  const { sessao, profissional } = await exigirProfissional();
+  const { erro } = await searchParams;
   const { saldoCentavos, lotes, extrato } = await carteiraDoProfissional(sessao.user.id);
+  const sala = await carregarSala();
+  // Comprar crédito só aparece com o pagamento online ligado, cadastro aprovado e algum pacote ativo.
+  const pacotes = sala && asaasAtivo() && profissional.status === 'aprovado' ? await listarPacotesAtivos(sala.espaco.id) : [];
+  const pendentes = await comprasPendentes(sessao.user.id);
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
       <h1 className="text-2xl font-semibold">Carteira</h1>
+
+      {erro && TEXTO_ERRO_COMPRA[erro as ErroCompra] && (
+        <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">
+          {TEXTO_ERRO_COMPRA[erro as ErroCompra]}
+        </p>
+      )}
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-4">
         <p className="text-sm text-zinc-600">Saldo disponível</p>
@@ -40,6 +55,47 @@ export default async function Carteira() {
           </p>
         )}
       </section>
+
+      {pendentes.length > 0 && (
+        <section aria-label="Compras em aberto" className="space-y-1 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-950">
+          <h2 className="font-semibold">Compras aguardando pagamento</h2>
+          <ul className="space-y-1">
+            {pendentes.map((c) => (
+              <li key={c.id}>
+                {c.pacote} · {formatarReais(c.valorCentavos)} ·{' '}
+                <Link href={`/carteira/pagar/${c.id}`} className="underline">
+                  Ver o Pix
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {pacotes.length > 0 && (
+        <section aria-label="Banco de horas" className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4">
+          <h2 className="font-semibold">Banco de horas</h2>
+          <p className="text-sm text-zinc-700">Compre crédito adiantado e use nas suas reservas, com bônus.</p>
+          <ul className="space-y-2">
+            {pacotes.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center gap-3 text-sm">
+                <div>
+                  <strong>{p.nome}</strong>
+                  <div className="text-zinc-600">
+                    Você paga {formatarReais(p.valorPagoCentavos)} e recebe {formatarReais(p.valorCreditoCentavos)}
+                  </div>
+                </div>
+                <form action={comprarPacoteAction} className="ml-auto">
+                  <input type="hidden" name="pacoteId" value={p.id} />
+                  <button type="submit" className="rounded-lg border border-zinc-900 bg-white px-3 py-2 hover:bg-zinc-900 hover:text-white">
+                    Comprar
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {lotes.length > 0 && (
         <section aria-label="Validades" className="rounded-2xl border border-zinc-200 bg-white p-4">

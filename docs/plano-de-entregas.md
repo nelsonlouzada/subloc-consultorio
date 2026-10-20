@@ -219,3 +219,19 @@ Código completo, com 208 testes (Postgres real, incluindo concorrência e muta�
 - **Recuperação de senha** (fora do plano, mas necessária antes de abrir): "Esqueci minha senha" e redefinição, link de 1 hora e uso único.
 
 Para o deploy: migrações 0006 e 0007 rodam sozinhas no Pre-deploy Command (`npm run deploy:preparar`). O worker ganhou o job `vencer-creditos`.
+
+### E4: pagamento online pelo Asaas (2026-10-20)
+
+Código completo, com 227 testes, e **verificado contra o sandbox real do Asaas** (cliente com CPF, cobrança Pix, QR Code e copia-e-cola criados de verdade; o aviso de pagamento foi simulado localmente com o formato do Asaas). Telas T12 e recibo vistas no navegador. Ainda **não** foi testado com um aviso que o próprio Asaas envia (isso exige o `web` no ar no Railway).
+
+- **Chave `ASAAS_ATIVO`**: o pagamento online só liga com `ASAAS_ATIVO=true`. Desligado, ou se o Asaas falhar na hora de aprovar, tudo segue pelo Pix manual da E2: aprovar um pedido nunca depende de o Asaas estar no ar.
+- **Aprovação**: cria (ou reaproveita) o cliente no Asaas e uma cobrança Pix do **restante** (depois do crédito); guarda QR, copia-e-cola e link da fatura (cartão, pela página do Asaas: nenhum dado de cartão passa pelo sistema). Reserva paga 100% com crédito não gera cobrança.
+- **T12 Pagamento** em Minhas reservas (e em `/carteira/pagar/[id]` para compra de crédito).
+- **Webhook** (`/api/webhooks/asaas`): token, idempotência (`webhook_evento`), confere o valor recebido contra o cobrado e a referência da cobrança; confirma a reserva sozinho. Aviso repetido não faz nada; aviso que falhou é reaplicado quando o Asaas reenviar (a resposta é 500 só nesse caso). Problemas de dados (cobrança desconhecida, valor diferente) ficam em `webhook_evento.erro` e no Sentry, com resposta 200, para o Asaas não reenviar para sempre.
+- **Pagamento atrasado (T1)**: reativa se o horário está livre, senão vira crédito. Se a reserva já foi **cancelada** (ou paga por outro meio), o valor também vira crédito integral.
+- **Cancelar** reserva não paga cancela a cobrança no Asaas (melhor esforço).
+- **Recibo** numerado em sequência (`recibo`, migração 0008), um por cobrança paga com dinheiro; PDF gerado na hora em `/api/recibos/[cobrancaId]` (só o dono e os Anfitriões). Quem recebe (nome e documento) vem de `RECIBO_EMITENTE_NOME` e `RECIBO_EMITENTE_DOC`; sem isso a linha não aparece, para o sistema nunca inventar um dado fiscal.
+- **Banco de horas**: tabela `pacote_credito`; a carteira mostra "Comprar" só com o pagamento online ligado, cadastro aprovado e algum pacote ativo. O crédito (com bônus) entra quando o pagamento é reconhecido. **Nenhum pacote vem cadastrado**: valores e bônus são decisão do Anfitrião (tela na T26, E6; até lá, inserção no banco).
+
+Para ligar em produção (depois do Railway voltar): `ASAAS_ATIVO=true`, `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` no `web` (o webhook já está cadastrado no Asaas com o mesmo token), `ASAAS_BASE_URL` só se for sair do sandbox. **Antes de usar o Asaas real com dinheiro**, falta a conversa com o contador (carnê-leão, Pix como pessoa física, crédito vendido antes do uso) e confirmar os limites da conta PF.
+

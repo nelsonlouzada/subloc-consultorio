@@ -3,6 +3,7 @@ import { db, schema } from '@/db';
 import { formatarReais } from '@/lib/dinheiro';
 import { registrarAuditoria } from '@/modulos/auditoria/auditoria';
 import { concederCredito, creditoPorCancelamento, devolverUso } from '@/modulos/carteira/carteira';
+import { cancelarPagamentoOnline } from '@/modulos/cobranca/online';
 import { emailCancelamentoAvisoAnfitriao, emailCancelamentoConfirmado, emailReservaCancelada } from '@/modulos/comunicacao/modelos';
 import { anfitrioesAtivos, notificar } from '@/modulos/comunicacao/notificar';
 import { descreverPeriodo } from './calendario';
@@ -80,6 +81,7 @@ async function cancelar(reservaId: string, quem: Quem, motivo: string | null, op
 
   const motivoLimpo = motivo?.trim() ? motivo.trim().slice(0, 500) : null;
 
+  const aCancelarNoAsaas: string[] = [];
   const resultado = await db.transaction(async (tx) => {
     // A condição no WHERE impede cancelar duas vezes ou competir com a expiração.
     const mudou = await tx
@@ -91,10 +93,11 @@ async function cancelar(reservaId: string, quem: Quem, motivo: string | null, op
     await tx.delete(schema.ocupacao).where(eq(schema.ocupacao.reservaId, reservaId));
 
     const itens = await tx
-      .select({ cobrancaId: schema.cobranca.id, status: schema.cobranca.status })
+      .select({ cobrancaId: schema.cobranca.id, status: schema.cobranca.status, asaasId: schema.cobranca.asaasCobrancaId })
       .from(schema.cobrancaItem)
       .innerJoin(schema.cobranca, eq(schema.cobranca.id, schema.cobrancaItem.cobrancaId))
       .where(eq(schema.cobrancaItem.reservaId, reservaId));
+    aCancelarNoAsaas.push(...itens.filter((i) => i.status === 'pendente' && i.asaasId).map((i) => i.asaasId!));
     const pendentes = itens.filter((i) => i.status === 'pendente').map((i) => i.cobrancaId);
     if (pendentes.length) {
       await tx.update(schema.cobranca).set({ status: 'cancelada' }).where(inArray(schema.cobranca.id, pendentes));
@@ -118,6 +121,8 @@ async function cancelar(reservaId: string, quem: Quem, motivo: string | null, op
     }
     return { pago, creditoCentavos, percentual };
   });
+
+  await cancelarPagamentoOnline(aCancelarNoAsaas); // reserva cancelada: o Pix aberto no Asaas não deve mais ser pago
 
   await registrarAuditoria({
     usuarioId: quem.id,
