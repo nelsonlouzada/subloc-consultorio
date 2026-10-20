@@ -63,6 +63,11 @@ export default async function Reservar({ searchParams }: { searchParams: Promise
           Pedido enviado. O horário está retido para você. Os responsáveis pela sala vão responder em breve, e você será avisado por e-mail.
         </p>
       )}
+      {busca.aviso === 'remarcar' && (
+        <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-900">
+          Reserva cancelada e horário liberado. Escolha o novo horário abaixo: se houve crédito, ele aparece no resumo do pedido e é usado por padrão.
+        </p>
+      )}
       {busca.erro && (
         <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">
           {TEXTO_ERRO_RESERVA[busca.erro as ErroReserva] ?? 'Não foi possível concluir o pedido.'}

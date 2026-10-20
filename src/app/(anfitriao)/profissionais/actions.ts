@@ -3,6 +3,9 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { contextoRequisicao, exigirAnfitriao } from '@/lib/sessao';
+import { reaisParaCentavos } from '@/lib/dinheiro';
+import { carregarSala } from '@/modulos/configuracao/espaco';
+import { CreditoManualInvalidoError, concederCreditoManual, ProfissionalSemCadastroError } from '@/modulos/carteira/manual';
 import {
   aprovarProfissional,
   bloquearProfissional,
@@ -50,3 +53,27 @@ export const aprovarAction = async (f: FormData) => executar('aprovar', f);
 export const recusarAction = async (f: FormData) => executar('recusar', f);
 export const bloquearAction = async (f: FormData) => executar('bloquear', f);
 export const desbloquearAction = async (f: FormData) => executar('desbloquear', f);
+
+export async function concederCreditoAction(formData: FormData) {
+  const sessao = await exigirAnfitriao();
+  const id = z.string().min(1).max(100).safeParse(formData.get('id'));
+  if (!id.success) redirect('/profissionais');
+  const sala = await carregarSala();
+  if (!sala) redirect(`/profissionais/${encodeURIComponent(id.data)}`);
+  const { ip } = await contextoRequisicao();
+  const valorCentavos = reaisParaCentavos(String(formData.get('valor') ?? ''));
+  let resultado: string;
+  try {
+    if (valorCentavos === null) throw new CreditoManualInvalidoError('valor');
+    await concederCreditoManual(
+      { anfitriaoId: sessao.user.id, profissionalId: id.data, espacoId: sala.espaco.id, valorCentavos, motivo: String(formData.get('motivo') ?? '') },
+      { ip },
+    );
+    resultado = 'aviso=credito';
+  } catch (e) {
+    if (e instanceof CreditoManualInvalidoError) resultado = `erro=credito_${e.motivo}`;
+    else if (e instanceof ProfissionalSemCadastroError) redirect('/profissionais');
+    else throw e;
+  }
+  redirect(`/profissionais/${encodeURIComponent(id.data)}?${resultado}`);
+}

@@ -166,7 +166,7 @@ describe('usar crédito no pedido (D8)', () => {
     const idCom = await pedir(espacoId, com, 9, 10, 2);
     await aprovarReserva(idCom, anf, {}, agora);
     await expirarPrazos(depois);
-    expect(await marcarPago(idCom, anf, {}, depois)).toEqual({ reativada: true });
+    expect(await marcarPago(idCom, anf, {}, depois)).toEqual({ reativada: true, creditoCentavos: 0 });
     expect(await saldoDisponivel(com, depois)).toBe(0);
 
     const sem = await f.profissional();

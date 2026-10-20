@@ -2,20 +2,12 @@ import { and, eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { formatarReais } from '@/lib/dinheiro';
 import { registrarAuditoria } from '@/modulos/auditoria/auditoria';
-import { emailPagamentoConfirmado } from '@/modulos/comunicacao/modelos';
+import { concederCredito, usarCredito } from '@/modulos/carteira/carteira';
+import { emailPagamentoAtrasadoVirouCredito, emailPagamentoConfirmado } from '@/modulos/comunicacao/modelos';
 import { notificar } from '@/modulos/comunicacao/notificar';
-import { usarCredito } from '@/modulos/carteira/carteira';
 import { descreverPeriodo } from './calendario';
 import { ConflitoAgendaError, registrarOcupacao } from './ocupacao';
 import { EstadoReservaError, ReservaNaoEncontradaError } from './solicitacao';
-
-/** O pagamento chegou depois da expiração e o horário já não está livre (ou já começou). */
-export class HorarioIndisponivelError extends Error {
-  constructor() {
-    super('O pedido já expirou e o horário não está mais livre.');
-    this.name = 'HorarioIndisponivelError';
-  }
-}
 
 /** O Pix chegou depois da expiração, mas o crédito que abatia o pedido já foi devolvido e não há saldo para abater de novo. */
 export class CreditoInsuficienteError extends Error {
@@ -25,20 +17,27 @@ export class CreditoInsuficienteError extends Error {
   }
 }
 
+export type ResultadoPagamento = {
+  /** O pedido tinha expirado e voltou: o horário ainda estava livre. */
+  reativada: boolean;
+  /** O pedido tinha expirado e o horário já não estava livre: o valor pago virou crédito. */
+  creditoCentavos: number;
+};
+
 /**
  * O Anfitrião confirma que o Pix chegou (E2: pagamento manual). A reserva fica confirmada e a
  * cobrança, paga com meio `pix_manual` e o nome de quem marcou.
  *
- * Se o prazo de pagamento já venceu e o pedido expirou, o dinheiro chegou mesmo assim: se o
- * horário ainda está livre, a reserva volta e é confirmada (decisão T1); se não está, devolve
- * `HorarioIndisponivelError` e o Anfitrião resolve por fora (o crédito automático chega na E3).
+ * Se o prazo de pagamento já venceu e o pedido expirou, o dinheiro chegou mesmo assim (decisão
+ * T1): se o horário ainda está livre, a reserva volta e é confirmada; se não está (ou já
+ * começou), o valor pago vira crédito na carteira, com origem `pagamento_atrasado`.
  */
 export async function marcarPago(
   reservaId: string,
   anfitriaoId: string,
   opcoes: { ip?: string | null } = {},
   agora = new Date(),
-) {
+): Promise<ResultadoPagamento> {
   const [r] = await db
     .select({
       reserva: schema.reserva,
@@ -65,7 +64,54 @@ export async function marcarPago(
 
   const reativando = r.reserva.status === 'expirada' && r.cobrancaStatus === 'expirada';
   if (r.reserva.status !== 'aguardando_pagamento' && !reativando) throw new EstadoReservaError(r.reserva.status);
-  if (reativando && r.reserva.inicio <= agora) throw new HorarioIndisponivelError();
+
+  const periodo = descreverPeriodo(r.reserva.inicio, r.reserva.fim);
+
+  // O dinheiro chegou, mas o horário não volta: vira crédito (só a cobrança muda, a reserva segue expirada).
+  const virarCredito = async (): Promise<ResultadoPagamento> => {
+    await db.transaction(async (tx) => {
+      const mudou = await tx
+        .update(schema.cobranca)
+        .set({ status: 'paga', meio: 'pix_manual', marcadaPagaPor: anfitriaoId, pagoEm: agora })
+        .where(and(eq(schema.cobranca.id, r.cobrancaId), eq(schema.cobranca.status, 'expirada')))
+        .returning({ id: schema.cobranca.id });
+      if (mudou.length === 0) throw new EstadoReservaError('já decidida');
+      await concederCredito(
+        tx,
+        {
+          profissionalId: r.reserva.profissionalId,
+          espacoId: r.reserva.espacoId,
+          origem: 'pagamento_atrasado',
+          valorCentavos: r.valorCobradoCentavos,
+          reservaId,
+          cobrancaId: r.cobrancaId,
+          criadoPor: anfitriaoId,
+        },
+        agora,
+      );
+    });
+    await registrarAuditoria({
+      usuarioId: anfitriaoId,
+      acao: 'pagamento_atrasado_virou_credito',
+      entidade: 'reserva',
+      entidadeId: reservaId,
+      dados: { valorCentavos: r.valorCobradoCentavos },
+      ip: opcoes.ip ?? null,
+    });
+    const m = emailPagamentoAtrasadoVirouCredito({ nome: r.nome, periodo, valor: formatarReais(r.valorCobradoCentavos) });
+    await notificar({
+      usuarioId: r.reserva.profissionalId,
+      para: r.email,
+      tipo: 'pagamento_atrasado_credito',
+      assunto: m.assunto,
+      html: m.html,
+      referenciaTipo: 'reserva',
+      referenciaId: reservaId,
+    });
+    return { reativada: false, creditoCentavos: r.valorCobradoCentavos };
+  };
+
+  if (reativando && r.reserva.inicio <= agora) return virarCredito();
 
   try {
     await db.transaction(async (tx) => {
@@ -99,7 +145,7 @@ export async function marcarPago(
         .where(eq(schema.cobranca.id, r.cobrancaId));
     });
   } catch (e) {
-    if (e instanceof ConflitoAgendaError) throw new HorarioIndisponivelError();
+    if (e instanceof ConflitoAgendaError) return virarCredito();
     throw e;
   }
 
@@ -114,7 +160,7 @@ export async function marcarPago(
 
   const m = emailPagamentoConfirmado({
     nome: r.nome,
-    periodo: descreverPeriodo(r.reserva.inicio, r.reserva.fim),
+    periodo,
     valor: formatarReais(r.valorCobradoCentavos),
     reservaId,
   });
@@ -127,5 +173,5 @@ export async function marcarPago(
     referenciaTipo: 'reserva',
     referenciaId: reservaId,
   });
-  return { reativada: reativando };
+  return { reativada: reativando, creditoCentavos: 0 };
 }

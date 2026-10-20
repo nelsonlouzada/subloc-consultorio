@@ -203,3 +203,19 @@ Falta na E2: bloco E (pagamento manual, código de acesso, minhas reservas, lemb
 Feito e verificado no navegador e por requisições reais (o Anfitrião marca o pagamento por Pix, a reserva fica confirmada, ele envia o código; a profissional vê a reserva, o código e a linha do tempo): `marcarPago` (cobrança paga com meio `pix_manual`; pagamento depois da expiração reativa a reserva se o horário ainda está livre, e recusa se não está), código de acesso por e-mail com reenvio (guardado só até a reserva terminar; nunca vai para a auditoria), encerramento de hora em hora (reserva terminada vira realizada e o código é apagado), lembrete da véspera na hora configurada (18h) sem duplicar, pendências no Início (códigos a enviar e pagamentos que vencem em até 1 hora), T24 (reserva do Anfitrião), T13 e T14 (Minhas reservas e detalhe, só do dono da reserva). 172 testes, incluindo pagamento e expiração no mesmo instante.
 
 **Código da E2 completo.** Para o "pronto" do plano (uma amiga reservar de verdade, do pedido até a entrada na sala) faltam as pendências externas: domínio verificado no Resend, contrato de locação, fechadura (ou código fixo provisório), chave Pix de recebimento e as variáveis do Railway (web e worker).
+
+### E3: cancelamento, créditos e remarcação (2026-10-20)
+
+Código completo, com 208 testes (Postgres real, incluindo concorrência e mutação: sem a devolução de crédito na expiração, 2 testes falham). Ainda **não** visto no navegador: as telas novas foram verificadas só por tipos, lint e testes de módulo.
+
+- **Carteira em lotes** (`credito_lote`, `credito_movimento`, migração 0006): validade por lote (90 dias, configurável em `regra_espaco`), uso pelo que vence primeiro (D8) com `FOR UPDATE`, vencimento por job horário no worker, T15 `/carteira` (saldo, validades, extrato).
+- **Usar crédito no pedido** (D8): ligado por padrão no resumo; o crédito abate **na aprovação**, na mesma transação da decisão. Se cobre tudo, a reserva é confirmada na hora (cobrança paga com meio `credito`). Se o pedido expira, é cancelado ou o Pix chega atrasado, o crédito volta (ou é abatido de novo).
+- **Política de cancelamento da profissional** (migração 0007): 100% do valor em crédito com 48 h ou mais, 50% de 24 h a 48 h, nada abaixo, calculada sobre o valor da reserva. Os três números ficam em `regra_espaco` (`cancelamento_integral_horas`, `cancelamento_parcial_horas`, `cancelamento_parcial_pct`), e o banco recusa combinações incoerentes. **Parametrizável na T26 (E6): a tela é a única coisa que falta.** Prévia do crédito antes de confirmar; retirar pedido sem resposta; Anfitriões avisados.
+- **Cancelamento pelo Anfitrião**: horário liberado, código apagado, crédito **integral** se já estava pago.
+- **Remarcação**: atalho em Minhas reservas (cancela pela política e abre Reservar com o crédito pronto para uso).
+- **Crédito manual** do Anfitrião (na ficha do profissional): motivo obrigatório, registrado na auditoria e enviado por e-mail.
+- **Registro de falta** (e desfazer): sem crédito, apaga o código e entra no histórico mostrado na aprovação.
+- **Pagamento atrasado**: se o horário não volta, o valor pago vira crédito (`pagamento_atrasado`) em vez de erro.
+- **Recuperação de senha** (fora do plano, mas necessária antes de abrir): "Esqueci minha senha" e redefinição, link de 1 hora e uso único.
+
+Para o deploy: migrações 0006 e 0007 rodam sozinhas no Pre-deploy Command (`npm run deploy:preparar`). O worker ganhou o job `vencer-creditos`.

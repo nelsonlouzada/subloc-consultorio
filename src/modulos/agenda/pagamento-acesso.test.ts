@@ -13,7 +13,8 @@ import { CodigoInvalidoError, enviarCodigoAcesso } from './acesso';
 import { encerrarReservas } from './encerramento';
 import { expirarPrazos } from './expiracao';
 import { enviarLembretesDaVespera } from './lembretes';
-import { HorarioIndisponivelError, marcarPago } from './pagamento';
+import { saldoDisponivel } from '@/modulos/carteira/carteira';
+import { marcarPago } from './pagamento';
 import { listarPendenciasDaSala } from './pendencias';
 import { criarReserva, type PedidoReserva } from './reserva';
 import { aprovarReserva, EstadoReservaError } from './solicitacao';
@@ -72,7 +73,7 @@ describe('marcar pago (Pix manual)', () => {
     const prof = await f.profissional();
     const id = await aprovado(espacoId, prof, anf);
 
-    expect(await marcarPago(id, anf, { ip: '203.0.113.9' }, agora)).toEqual({ reativada: false });
+    expect(await marcarPago(id, anf, { ip: '203.0.113.9' }, agora)).toEqual({ reativada: false, creditoCentavos: 0 });
     expect(await reserva(id)).toMatchObject({ status: 'confirmada' });
     expect((await ocupacoes(id)).length).toBe(1);
     const c = await cobrancaDe(prof);
@@ -106,7 +107,7 @@ describe('marcar pago (Pix manual)', () => {
     expect((await reserva(id)).status).toBe('expirada');
     expect(await ocupacoes(id)).toHaveLength(0);
 
-    expect(await marcarPago(id, anf, {}, new Date(agora.getTime() + 4 * 3_600_000))).toEqual({ reativada: true });
+    expect(await marcarPago(id, anf, {}, new Date(agora.getTime() + 4 * 3_600_000))).toEqual({ reativada: true, creditoCentavos: 0 });
     expect((await reserva(id)).status).toBe('confirmada');
     expect(await ocupacoes(id)).toHaveLength(1);
     expect((await cobrancaDe(prof)).status).toBe('paga');
@@ -121,10 +122,20 @@ describe('marcar pago (Pix manual)', () => {
     await expirarPrazos(new Date(agora.getTime() + 3 * 3_600_000));
     await pedir(espacoId, b); // outra pessoa pegou o horário livre
 
-    await expect(marcarPago(id, anf, {}, new Date(agora.getTime() + 4 * 3_600_000))).rejects.toThrow(HorarioIndisponivelError);
+    const quando = new Date(agora.getTime() + 4 * 3_600_000);
+    expect(await marcarPago(id, anf, {}, quando)).toEqual({ reativada: false, creditoCentavos: 5000 });
+    // O horário segue com a outra pessoa; o dinheiro de quem pagou atrasado virou crédito.
     expect((await reserva(id)).status).toBe('expirada');
-    expect((await cobrancaDe(a)).status).toBe('expirada');
+    expect((await ocupacoes(id)).length).toBe(0);
+    expect((await cobrancaDe(a)).status).toBe('paga');
+    expect(await saldoDisponivel(a, quando)).toBe(5000);
+    const [lote] = await db.select().from(schema.creditoLote).where(eq(schema.creditoLote.profissionalId, a));
+    expect(lote).toMatchObject({ origem: 'pagamento_atrasado', valorInicialCentavos: 5000, reservaId: id });
+    expect(emailsPara(a).some((e) => e[1].includes('virou crédito'))).toBe(true);
     expect(emailsPara(a).some((e) => e[1].includes('Pagamento recebido'))).toBe(false);
+    // Marcar de novo não duplica o crédito.
+    await expect(marcarPago(id, anf, {}, quando)).rejects.toThrow(EstadoReservaError);
+    expect(await saldoDisponivel(a, quando)).toBe(5000);
   });
 
   it('pedido que expirou sem nunca ter sido aprovado não aceita pagamento', async () => {
@@ -143,8 +154,9 @@ describe('marcar pago (Pix manual)', () => {
     const id = await aprovado(espacoId, prof, anf);
     await expirarPrazos(new Date(agora.getTime() + 3 * 3_600_000));
     const jaComecou = new Date(h(9).getTime() + 60_000); // um minuto depois do início da reserva
-    await expect(marcarPago(id, anf, {}, jaComecou)).rejects.toThrow(HorarioIndisponivelError);
+    expect(await marcarPago(id, anf, {}, jaComecou)).toEqual({ reativada: false, creditoCentavos: 5000 });
     expect((await reserva(id)).status).toBe('expirada');
+    expect(await saldoDisponivel(prof, jaComecou)).toBe(5000);
   });
 
   it('pagamento e expiração no mesmo instante: o resultado é sempre coerente', async () => {

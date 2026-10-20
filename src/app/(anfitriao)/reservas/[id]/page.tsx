@@ -6,12 +6,15 @@ import { exigirAnfitriao } from '@/lib/sessao';
 import { listarAuditoriaDe } from '@/modulos/auditoria/auditoria';
 import { descreverMomento, descreverPeriodo } from '@/modulos/agenda/calendario';
 import { obterReserva, ROTULO_STATUS } from '@/modulos/agenda/consulta';
-import { cancelarReservaAction, enviarCodigoAction, marcarPagoAction } from '../actions';
+import { cancelarReservaAction, desfazerFaltaAction, enviarCodigoAction, marcarPagoAction, registrarFaltaAction } from '../actions';
 
 export const metadata = { title: 'Reserva' };
 
 const AVISOS: Record<string, string> = {
   pago: 'Pagamento registrado. A reserva está confirmada e o profissional foi avisado por e-mail.',
+  pago_credito: 'Pagamento registrado. O pedido já tinha expirado e o horário não estava mais livre: o valor virou crédito na carteira do profissional, que foi avisado.',
+  falta: 'Falta registrada. O profissional foi avisado por e-mail.',
+  falta_desfeita: 'Falta desfeita.',
   pago_reativada: 'Pagamento registrado. O horário ainda estava livre: a reserva voltou e está confirmada.',
   codigo: 'Código enviado ao profissional por e-mail.',
   cancelada: 'Reserva cancelada. O horário foi liberado e o profissional foi avisado por e-mail.',
@@ -19,10 +22,10 @@ const AVISOS: Record<string, string> = {
     'Reserva cancelada e o horário liberado. O valor pago virou crédito integral na carteira do profissional.',
 };
 const ERROS: Record<string, string> = {
-  horario: 'O pedido já expirou e o horário não está mais livre. O pagamento precisa ser resolvido por fora (devolução ou outro horário).',
   estado: 'O estado desta reserva mudou. Confira abaixo e tente de novo.',
   codigo: 'Código inválido. Use de 3 a 20 caracteres: números, letras, * # ou -.',
   credito_devolvido: 'O crédito que abatia este pedido já voltou para a carteira e o saldo atual não cobre. Resolva com a pessoa por fora antes de marcar.',
+  nao_iniciada: 'A reserva ainda não começou: só dá para registrar falta depois do início.',
   iniciada: 'A reserva já começou e não pode mais ser cancelada.',
 };
 const NOME_ACAO: Record<string, string> = {
@@ -36,6 +39,9 @@ const NOME_ACAO: Record<string, string> = {
   pagamento_marcado: 'Pagamento marcado como recebido',
   pagamento_marcado_apos_expirar: 'Pagamento marcado depois de expirar (horário reativado)',
   codigo_acesso_enviado: 'Código de acesso enviado',
+  pagamento_atrasado_virou_credito: 'Pagamento atrasado recebido: virou crédito',
+  falta_registrada: 'Falta registrada',
+  falta_desfeita: 'Falta desfeita',
 };
 const UNIDADE = { hora: 'por hora', turno: 'turno', dia: 'dia inteiro' } as const;
 const quando = (d: Date) => descreverMomento(d);
@@ -59,6 +65,8 @@ export default async function ReservaDoAnfitriao({
   const s = ROTULO_STATUS[r.status] ?? { nome: r.status, cor: 'bg-zinc-100 text-zinc-700' };
 
   const podeMarcarPago = r.status === 'aguardando_pagamento' || (r.status === 'expirada' && cobranca?.status === 'expirada');
+  const comecou = r.inicio <= new Date();
+  const podeRegistrarFalta = (r.status === 'confirmada' || r.status === 'realizada') && comecou;
   const podeCancelar = (r.status === 'aguardando_pagamento' || r.status === 'confirmada') && r.inicio > new Date();
 
   return (
@@ -126,7 +134,7 @@ export default async function ReservaDoAnfitriao({
           )}
           {r.status === 'expirada' && cobranca.status === 'expirada' && (
             <p className="text-amber-900">
-              O prazo de pagamento venceu. Se o Pix chegou mesmo assim, marque abaixo: se o horário ainda estiver livre, a reserva volta.
+              O prazo de pagamento venceu. Se o Pix chegou mesmo assim, marque abaixo: se o horário ainda estiver livre, a reserva volta; se não estiver, o valor vira crédito na carteira do profissional.
             </p>
           )}
           {podeMarcarPago && (
@@ -184,6 +192,29 @@ export default async function ReservaDoAnfitriao({
               Cancelar esta reserva
             </button>
           </form>
+        </section>
+      )}
+
+      {(podeRegistrarFalta || r.status === 'falta') && (
+        <section className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 text-sm">
+          <h2 className="font-semibold">Comparecimento</h2>
+          {r.status === 'falta' ? (
+            <form action={desfazerFaltaAction} className="space-y-2">
+              <input type="hidden" name="id" value={r.id} />
+              <p className="text-zinc-700">Falta registrada: a pessoa não usou a sala. Se foi engano, desfaça.</p>
+              <button type="submit" className={`${botao} border border-zinc-400 bg-white`}>
+                Desfazer a falta
+              </button>
+            </form>
+          ) : (
+            <form action={registrarFaltaAction} className="space-y-2">
+              <input type="hidden" name="id" value={r.id} />
+              <p className="text-zinc-700">Se a pessoa não apareceu, registre a falta. Não gera crédito, e a pessoa é avisada por e-mail.</p>
+              <button type="submit" className={`${botao} border border-red-700 bg-white text-red-800 hover:bg-red-700 hover:text-white`}>
+                Registrar falta
+              </button>
+            </form>
+          )}
         </section>
       )}
 

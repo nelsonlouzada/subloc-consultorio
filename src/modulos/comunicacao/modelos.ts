@@ -141,6 +141,42 @@ ${botao(`${urlBase()}/reservar`, 'Escolher outro horário')}`,
   };
 }
 
+export function emailPagamentoAtrasadoVirouCredito(p: { nome: string; periodo: string; valor: string }) {
+  return {
+    assunto: 'Recebemos seu pagamento: o valor virou crédito',
+    html: layout(
+      'Pagamento recebido como crédito',
+      `<p>Olá, ${esc(p.nome)}. Recebemos o seu pagamento de <strong>${esc(p.valor)}</strong> para <strong>${esc(p.periodo)}</strong>, mas ele chegou depois do prazo e o horário já não estava livre.</p>
+<p>O valor total está na sua carteira como crédito e pode ser usado numa nova reserva.</p>
+${botao(`${urlBase()}/reservar`, 'Escolher outro horário')}`,
+    ),
+  };
+}
+
+export function emailCreditoConcedido(p: { nome: string; valor: string; motivo: string | null }) {
+  return {
+    assunto: 'Você recebeu crédito na sua carteira',
+    html: layout(
+      'Crédito na carteira',
+      `<p>Olá, ${esc(p.nome)}. Os responsáveis pela sala colocaram <strong>${esc(p.valor)}</strong> de crédito na sua carteira.</p>
+${p.motivo ? `<p>Motivo: ${esc(p.motivo)}</p>` : ''}
+${botao(`${urlBase()}/carteira`, 'Ver minha carteira')}`,
+    ),
+  };
+}
+
+export function emailFaltaRegistrada(p: { nome: string; periodo: string }) {
+  return {
+    assunto: 'Falta registrada na sua reserva',
+    html: layout(
+      'Falta registrada',
+      `<p>Olá, ${esc(p.nome)}. Os responsáveis pela sala registraram que a reserva de <strong>${esc(p.periodo)}</strong> não foi usada (falta).</p>
+<p>Se isso não está certo, responda a este e-mail ou fale com os responsáveis.</p>
+${botao(`${urlBase()}/minhas-reservas`, 'Ver minhas reservas')}`,
+    ),
+  };
+}
+
 export function emailCancelamentoConfirmado(p: { nome: string; periodo: string; credito: string | null; percentual: number; pago: boolean }) {
   const dinheiro = p.credito
     ? `<p>Pela política de cancelamento (${p.percentual}% do valor), <strong>${esc(p.credito)}</strong> virou crédito na sua carteira e pode ser usado numa nova reserva.</p>`

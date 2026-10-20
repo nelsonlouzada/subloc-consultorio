@@ -154,12 +154,16 @@ export default async function DetalheDaReserva({
           ) : (
             <p>O horário será liberado.{r.status === 'aguardando_pagamento' ? ' Como o pagamento ainda não foi feito, você não perde nada, e o crédito que abatia o pedido volta para a carteira.' : ''}</p>
           )}
-          <form action={cancelarMinhaReservaAction}>
+          <form action={cancelarMinhaReservaAction} className="flex flex-wrap gap-2">
             <input type="hidden" name="id" value={r.id} />
             <button type="submit" className="rounded-lg border border-red-700 bg-white px-4 py-2.5 font-medium text-red-800 hover:bg-red-700 hover:text-white">
               {r.status === 'solicitada' ? 'Retirar o pedido' : 'Confirmar o cancelamento'}
             </button>
+            <button type="submit" name="remarcar" value="1" className="rounded-lg border border-zinc-900 bg-white px-4 py-2.5 font-medium hover:bg-zinc-900 hover:text-white">
+              Cancelar e escolher outro horário
+            </button>
           </form>
+          <p className="text-xs text-zinc-600">Remarcar é cancelar e pedir um novo horário: vale a mesma regra de crédito acima, e o crédito é usado no novo pedido.</p>
         </section>
       )}
 

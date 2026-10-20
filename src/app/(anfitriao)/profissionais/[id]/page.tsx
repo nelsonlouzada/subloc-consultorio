@@ -5,7 +5,9 @@ import { listarAuditoriaDe } from '@/modulos/auditoria/auditoria';
 import { obterProfissional } from '@/modulos/identidade/aprovacao';
 import { linkConsultaConselho } from '@/modulos/identidade/conselhos';
 import { PROFISSOES, STATUS_PROFISSIONAL } from '@/modulos/identidade/opcoes';
-import { aprovarAction, bloquearAction, desbloquearAction, recusarAction } from '../actions';
+import { formatarReais } from '@/lib/dinheiro';
+import { saldoDisponivel } from '@/modulos/carteira/carteira';
+import { aprovarAction, bloquearAction, concederCreditoAction, desbloquearAction, recusarAction } from '../actions';
 
 export const metadata = { title: 'Profissional' };
 
@@ -14,6 +16,11 @@ const ACOES: Record<string, string> = {
   recusar: 'Cadastro recusado. O profissional foi avisado por e-mail.',
   bloquear: 'Profissional bloqueado.',
   desbloquear: 'Profissional desbloqueado.',
+  credito: 'Crédito concedido. O profissional foi avisado por e-mail.',
+};
+const ERROS_CREDITO: Record<string, string> = {
+  credito_valor: 'Valor inválido. Use reais, por exemplo 50 ou 50,00 (até R$ 10.000).',
+  credito_justificativa: 'Informe o motivo do crédito (ele fica no histórico).',
 };
 
 const NOME_ACAO: Record<string, string> = {
@@ -21,6 +28,7 @@ const NOME_ACAO: Record<string, string> = {
   profissional_aprovado: 'Aprovado',
   profissional_recusado: 'Recusado',
   profissional_bloqueado: 'Bloqueado',
+  credito_manual: 'Crédito concedido',
 };
 
 const quando = (d: Date) =>
@@ -45,6 +53,7 @@ export default async function DetalheProfissional({
   if (!p) notFound();
   const historico = await listarAuditoriaDe('profissional', p.id);
   const consulta = linkConsultaConselho(p.conselho);
+  const saldo = await saldoDisponivel(p.id);
 
   return (
     <div className="space-y-5">
@@ -58,7 +67,12 @@ export default async function DetalheProfissional({
           {ACOES[aviso]}
         </p>
       )}
-      {erro && (
+      {erro && ERROS_CREDITO[erro] && (
+        <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">
+          {ERROS_CREDITO[erro]}
+        </p>
+      )}
+      {erro && !ERROS_CREDITO[erro] && (
         <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">
           O estado deste cadastro mudou enquanto você olhava. Confira abaixo e tente de novo.
         </p>
@@ -146,6 +160,32 @@ export default async function DetalheProfissional({
             </button>
           </form>
         )}
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 text-sm">
+        <h2 className="font-semibold">Carteira</h2>
+        <p>
+          Saldo de crédito: <strong>{formatarReais(saldo)}</strong>
+        </p>
+        <form action={concederCreditoAction} className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="id" value={p.id} />
+          <div>
+            <label htmlFor="valor-credito" className="block text-xs text-zinc-600">
+              Valor (R$)
+            </label>
+            <input id="valor-credito" name="valor" required inputMode="decimal" autoComplete="off" placeholder="50,00" className="w-28 rounded-lg border border-zinc-300 px-3 py-2" />
+          </div>
+          <div className="min-w-48 flex-1">
+            <label htmlFor="motivo-credito" className="block text-xs text-zinc-600">
+              Motivo (vai no e-mail e no histórico)
+            </label>
+            <input id="motivo-credito" name="motivo" required maxLength={300} autoComplete="off" className="w-full rounded-lg border border-zinc-300 px-3 py-2" />
+          </div>
+          <button type="submit" className={`${botao} bg-zinc-900 text-white`}>
+            Conceder crédito
+          </button>
+        </form>
+        <p className="text-xs text-zinc-600">O crédito é usado automaticamente nos próximos pedidos da pessoa e vence como os demais.</p>
       </section>
 
       <section aria-label="Histórico" className="rounded-2xl border border-zinc-200 bg-white p-4">

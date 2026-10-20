@@ -21,5 +21,7 @@ export async function cancelarMinhaReservaAction(formData: FormData) {
     else if (e instanceof ReservaNaoEncontradaError) redirect('/minhas-reservas');
     else throw e;
   }
+  // Remarcar = cancelar pela política e já escolher outro horário; o crédito gerado é usado por padrão.
+  if (formData.get('remarcar') && destino.startsWith('aviso=')) redirect('/reservar?aviso=remarcar');
   redirect(`/minhas-reservas/${id.data}?${destino}`);
 }
