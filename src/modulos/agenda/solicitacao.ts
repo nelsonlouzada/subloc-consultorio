@@ -179,6 +179,7 @@ export async function aprovarReserva(
     valor: formatarReais(r.reserva.valorCentavos),
     prazoPagamento: descreverMomento(prazoPagamentoAte),
     pix: pixManual(),
+    reservaId,
   });
   await notificar({
     usuarioId: r.reserva.profissionalId,

@@ -197,3 +197,9 @@ Feito e verificado no navegador (Profissional pendente pede o dia inteiro; o Anf
 Para o deploy: o serviço `worker` no Railway precisa das variáveis `RESEND_API_KEY`, `EMAIL_REMETENTE` e `BETTER_AUTH_URL` (ele agora envia e-mail e monta links), além de `DATABASE_URL`. E, para o e-mail de aprovação trazer o Pix, `PIX_MANUAL_CHAVE` e `PIX_MANUAL_NOME` no serviço `web` e no `worker`.
 
 Falta na E2: bloco E (pagamento manual, código de acesso, minhas reservas, lembrete da véspera).
+
+### E2, bloco E: pagamento manual e acesso (2026-10-20)
+
+Feito e verificado no navegador e por requisições reais (o Anfitrião marca o pagamento por Pix, a reserva fica confirmada, ele envia o código; a profissional vê a reserva, o código e a linha do tempo): `marcarPago` (cobrança paga com meio `pix_manual`; pagamento depois da expiração reativa a reserva se o horário ainda está livre, e recusa se não está), código de acesso por e-mail com reenvio (guardado só até a reserva terminar; nunca vai para a auditoria), encerramento de hora em hora (reserva terminada vira realizada e o código é apagado), lembrete da véspera na hora configurada (18h) sem duplicar, pendências no Início (códigos a enviar e pagamentos que vencem em até 1 hora), T24 (reserva do Anfitrião), T13 e T14 (Minhas reservas e detalhe, só do dono da reserva). 172 testes, incluindo pagamento e expiração no mesmo instante.
+
+**Código da E2 completo.** Para o "pronto" do plano (uma amiga reservar de verdade, do pedido até a entrada na sala) faltam as pendências externas: domínio verificado no Resend, contrato de locação, fechadura (ou código fixo provisório), chave Pix de recebimento e as variáveis do Railway (web e worker).

@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { exigirAnfitriao } from '@/lib/sessao';
 import { somarDias, formatarDataISO, type DataLocal } from '@/lib/fuso';
 import { listarAgenda } from '@/modulos/agenda/bloqueio';
-import { hojeLocal, horaTexto, limitesDoDia, nomeDiaCurto } from '@/modulos/agenda/calendario';
+import { descreverMomento, descreverPeriodo, hojeLocal, horaTexto, limitesDoDia, nomeDiaCurto } from '@/modulos/agenda/calendario';
+import { listarPendenciasDaSala } from '@/modulos/agenda/pendencias';
 import { listarReservasNoPeriodo } from '@/modulos/agenda/reserva';
 import { contarSolicitacoes } from '@/modulos/agenda/solicitacao';
 import { carregarSala } from '@/modulos/configuracao/espaco';
@@ -50,6 +51,9 @@ export default async function Inicio() {
   const hoje = hojeLocal();
   const pendentes = await contarPendentes();
   const solicitacoes = sala ? await contarSolicitacoes(sala.espaco.id) : 0;
+  const { codigosAEnviar, pagamentosExpirando } = sala
+    ? await listarPendenciasDaSala(sala.espaco.id)
+    : { codigosAEnviar: [], pagamentosExpirando: [] };
 
   return (
     <div className="space-y-6">
@@ -57,8 +61,24 @@ export default async function Inicio() {
 
       <section aria-label="Pendências" className="rounded-2xl border border-zinc-200 bg-white p-4">
         <h2 className="mb-1 font-semibold">O que precisa de ação</h2>
-        {pendentes + solicitacoes > 0 ? (
+        {pendentes + solicitacoes + codigosAEnviar.length + pagamentosExpirando.length > 0 ? (
           <ul className="space-y-1 text-sm">
+            {pagamentosExpirando.map((p) => (
+              <li key={p.id}>
+                <Link href={`/reservas/${p.id}`} className="font-medium underline">
+                  Pagamento de {p.profissional} vence {p.prazo ? descreverMomento(p.prazo) : 'em breve'}
+                </Link>{' '}
+                ({descreverPeriodo(p.inicio, p.fim)})
+              </li>
+            ))}
+            {codigosAEnviar.map((c) => (
+              <li key={c.id}>
+                <Link href={`/reservas/${c.id}`} className="font-medium underline">
+                  Enviar código de acesso a {c.profissional}
+                </Link>{' '}
+                ({descreverPeriodo(c.inicio, c.fim)})
+              </li>
+            ))}
             {solicitacoes > 0 && (
               <li>
                 <Link href="/solicitacoes" className="font-medium underline">
@@ -75,9 +95,7 @@ export default async function Inicio() {
             )}
           </ul>
         ) : (
-          <p className="text-sm text-zinc-600">
-            Nenhuma pendência. Códigos de acesso a enviar e pagamentos prestes a expirar aparecem aqui no próximo bloco.
-          </p>
+          <p className="text-sm text-zinc-600">Nenhuma pendência no momento.</p>
         )}
       </section>
 

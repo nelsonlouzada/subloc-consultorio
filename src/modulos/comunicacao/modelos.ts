@@ -54,6 +54,7 @@ export function emailReservaAprovada(p: {
   valor: string;
   prazoPagamento: string;
   pix: { chave: string; beneficiario: string } | null;
+  reservaId: string;
 }) {
   const pagamento = p.pix
     ? `<p><strong>Pague por Pix até ${esc(p.prazoPagamento)}:</strong></p>
@@ -66,7 +67,44 @@ export function emailReservaAprovada(p: {
       'Reserva aprovada',
       `<p>Olá, ${esc(p.nome)}. Seu pedido para <strong>${esc(p.periodo)}</strong> foi aprovado.</p>
 ${pagamento}
-${botao(`${urlBase()}/reservar`, 'Ver meus pedidos')}`,
+${botao(`${urlBase()}/minhas-reservas/${encodeURIComponent(p.reservaId)}`, 'Ver a reserva')}`,
+    ),
+  };
+}
+
+export function emailPagamentoConfirmado(p: { nome: string; periodo: string; valor: string; reservaId: string }) {
+  return {
+    assunto: 'Pagamento recebido: sua reserva está confirmada',
+    html: layout(
+      'Reserva confirmada',
+      `<p>Olá, ${esc(p.nome)}. Recebemos o pagamento de <strong>${esc(p.valor)}</strong> e a sua reserva para <strong>${esc(p.periodo)}</strong> está confirmada.</p>
+<p>O código de acesso à sala será enviado por e-mail antes do horário.</p>
+${botao(`${urlBase()}/minhas-reservas/${encodeURIComponent(p.reservaId)}`, 'Ver a reserva')}`,
+    ),
+  };
+}
+
+export function emailCodigoAcesso(p: { nome: string; periodo: string; codigo: string; reservaId: string }) {
+  return {
+    assunto: 'Código de acesso à sala',
+    html: layout(
+      'Código de acesso',
+      `<p>Olá, ${esc(p.nome)}. Sua reserva é <strong>${esc(p.periodo)}</strong>.</p>
+<p>Código de acesso: <strong style="font-size:20px;letter-spacing:2px">${esc(p.codigo)}</strong></p>
+<p>O código é pessoal, vale só para este horário e não deve ser repassado. Deixe a sala limpa e organizada e respeite o horário de saída.</p>
+${botao(`${urlBase()}/minhas-reservas/${encodeURIComponent(p.reservaId)}`, 'Ver a reserva')}`,
+    ),
+  };
+}
+
+export function emailLembreteVespera(p: { nome: string; periodo: string; codigo: string | null; reservaId: string }) {
+  return {
+    assunto: 'Lembrete: você tem a sala amanhã',
+    html: layout(
+      'Lembrete da sua reserva',
+      `<p>Olá, ${esc(p.nome)}. Amanhã você tem a sala: <strong>${esc(p.periodo)}</strong>.</p>
+<p>${p.codigo ? `Código de acesso: <strong>${esc(p.codigo)}</strong>.` : 'O código de acesso será enviado pelos responsáveis antes do horário.'}</p>
+${botao(`${urlBase()}/minhas-reservas/${encodeURIComponent(p.reservaId)}`, 'Ver a reserva')}`,
     ),
   };
 }

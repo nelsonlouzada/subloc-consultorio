@@ -114,6 +114,9 @@ export default async function Solicitacoes({ searchParams }: { searchParams: Pro
                 Pagar até <strong>{descreverMomento(s.prazoPagamentoAte)}</strong>. Sem pagamento até lá, o horário é liberado.
               </p>
             )}
+            <Link href={`/reservas/${s.id}`} className="mt-2 inline-block rounded-lg border border-zinc-900 px-3 py-1.5 font-medium">
+              Abrir reserva e marcar pagamento
+            </Link>
           </article>
         ))}
       </section>

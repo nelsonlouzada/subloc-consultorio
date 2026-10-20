@@ -48,6 +48,8 @@ type Linha = {
   cor: string;
   grupoId: string | null;
   bloqueio: boolean;
+  /** Página da reserva (T24); bloqueios não têm. */
+  href: string | null;
 };
 
 type Busca = { visao?: string; data?: string; aviso?: string; n?: string; conflitos?: string; erro?: string };
@@ -103,6 +105,7 @@ export default async function Agenda({ searchParams }: { searchParams: Promise<B
       cor: TIPO[b.tipo].cor,
       grupoId: b.grupoId,
       bloqueio: true,
+      href: null,
     })),
     ...reservas.map((r) => ({
       id: r.id,
@@ -113,6 +116,7 @@ export default async function Agenda({ searchParams }: { searchParams: Promise<B
       cor: STATUS_RESERVA[r.status]?.cor ?? TIPO.indisponivel.cor,
       grupoId: null,
       bloqueio: false,
+      href: `/reservas/${r.id}`,
     })),
   ].sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
 
@@ -260,6 +264,11 @@ function ListaSemana({ dias, itens, dataAtual }: { dias: DataLocal[]; itens: Lin
                   {i.detalhe ? ` · ${i.detalhe}` : ''}
                 </span>
                 <div className="ml-auto flex items-center gap-2">
+                  {i.href && (
+                    <Link href={i.href} className="rounded border border-current px-2 py-1 text-xs">
+                      Abrir reserva
+                    </Link>
+                  )}
                   {i.bloqueio && (
                     <form action={removerBloqueioAction}>
                       <input type="hidden" name="id" value={i.id} />

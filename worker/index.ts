@@ -1,7 +1,9 @@
 import 'dotenv/config';
 import * as Sentry from '@sentry/node';
 import { PgBoss } from 'pg-boss';
+import { encerrarReservas } from '../src/modulos/agenda/encerramento';
 import { expirarPrazos } from '../src/modulos/agenda/expiracao';
+import { enviarLembretesDaVespera } from '../src/modulos/agenda/lembretes';
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN_WORKER,
@@ -41,6 +43,30 @@ async function main() {
     }
   });
   await boss.schedule(FILA_EXPIRAR, '* * * * *');
+
+  // Tarefas de hora em hora. Todas são idempotentes: rodar de novo não faz nada a mais (o aviso
+  // nunca sai em dobro, a reserva só muda de estado uma vez).
+  const horaria = async (fila: string, minuto: number, tarefa: () => Promise<string | null>) => {
+    await boss.createQueue(fila);
+    await boss.work(fila, async () => {
+      try {
+        const resumo = await tarefa();
+        if (resumo) console.log(`[worker] ${resumo}`);
+      } catch (e) {
+        Sentry.captureException(e);
+        throw e;
+      }
+    });
+    await boss.schedule(fila, `${minuto} * * * *`);
+  };
+  await horaria('encerrar-reservas', 5, async () => {
+    const r = await encerrarReservas();
+    return r.realizadas || r.codigosApagados ? `encerrou ${r.realizadas} reservas e apagou ${r.codigosApagados} códigos` : null;
+  });
+  await horaria('lembretes-vespera', 10, async () => {
+    const r = await enviarLembretesDaVespera();
+    return r.enviados ? `enviou ${r.enviados} lembretes da véspera` : null;
+  });
 
   console.log('[worker] no ar');
   const parar = async () => {

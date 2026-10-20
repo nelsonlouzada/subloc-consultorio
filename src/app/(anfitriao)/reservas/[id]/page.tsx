@@ -1,0 +1,175 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { z } from 'zod';
+import { formatarReais } from '@/lib/dinheiro';
+import { exigirAnfitriao } from '@/lib/sessao';
+import { listarAuditoriaDe } from '@/modulos/auditoria/auditoria';
+import { descreverMomento, descreverPeriodo } from '@/modulos/agenda/calendario';
+import { obterReserva, ROTULO_STATUS } from '@/modulos/agenda/consulta';
+import { enviarCodigoAction, marcarPagoAction } from '../actions';
+
+export const metadata = { title: 'Reserva' };
+
+const AVISOS: Record<string, string> = {
+  pago: 'Pagamento registrado. A reserva está confirmada e o profissional foi avisado por e-mail.',
+  pago_reativada: 'Pagamento registrado. O horário ainda estava livre: a reserva voltou e está confirmada.',
+  codigo: 'Código enviado ao profissional por e-mail.',
+};
+const ERROS: Record<string, string> = {
+  horario: 'O pedido já expirou e o horário não está mais livre. O pagamento precisa ser resolvido por fora (devolução ou outro horário).',
+  estado: 'O estado desta reserva mudou. Confira abaixo e tente de novo.',
+  codigo: 'Código inválido. Use de 3 a 20 caracteres: números, letras, * # ou -.',
+};
+const NOME_ACAO: Record<string, string> = {
+  reserva_solicitada: 'Pedido enviado',
+  reserva_aprovada: 'Pedido aprovado',
+  reserva_recusada: 'Pedido recusado',
+  reserva_expirada_aprovacao: 'Expirou sem aprovação',
+  reserva_expirada_pagamento: 'Expirou sem pagamento',
+  pagamento_marcado: 'Pagamento marcado como recebido',
+  pagamento_marcado_apos_expirar: 'Pagamento marcado depois de expirar (horário reativado)',
+  codigo_acesso_enviado: 'Código de acesso enviado',
+};
+const UNIDADE = { hora: 'por hora', turno: 'turno', dia: 'dia inteiro' } as const;
+const quando = (d: Date) => descreverMomento(d);
+const botao = 'rounded-lg px-4 py-2.5 font-medium';
+
+export default async function ReservaDoAnfitriao({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ aviso?: string; erro?: string }>;
+}) {
+  await exigirAnfitriao();
+  const { id } = await params;
+  if (!z.string().uuid().safeParse(id).success) notFound();
+  const { aviso, erro } = await searchParams;
+  const dados = await obterReserva(id);
+  if (!dados) notFound();
+  const { reserva: r, cobranca, profissionalNome, profissionalEmail, aprovadaPorNome } = dados;
+  const historico = await listarAuditoriaDe('reserva', id);
+  const s = ROTULO_STATUS[r.status] ?? { nome: r.status, cor: 'bg-zinc-100 text-zinc-700' };
+
+  const podeMarcarPago = r.status === 'aguardando_pagamento' || (r.status === 'expirada' && cobranca?.status === 'expirada');
+
+  return (
+    <div className="space-y-5">
+      <Link href="/solicitacoes" className="text-sm underline">
+        ← Solicitações
+      </Link>
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="text-2xl font-semibold">{descreverPeriodo(r.inicio, r.fim)}</h1>
+        <span className={`rounded-full px-2 py-0.5 text-xs ${s.cor}`}>{s.nome}</span>
+      </div>
+
+      {aviso && AVISOS[aviso] && (
+        <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-900">
+          {AVISOS[aviso]}
+        </p>
+      )}
+      {erro && ERROS[erro] && (
+        <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">
+          {ERROS[erro]}
+        </p>
+      )}
+
+      <section className="space-y-1 rounded-2xl border border-zinc-200 bg-white p-4 text-sm">
+        <p>
+          <span className="text-zinc-500">Profissional:</span>{' '}
+          <Link href={`/profissionais/${encodeURIComponent(r.profissionalId)}`} className="underline">
+            {profissionalNome}
+          </Link>{' '}
+          · {profissionalEmail}
+        </p>
+        <p>
+          <span className="text-zinc-500">Reserva:</span> {UNIDADE[r.unidade]} · {formatarReais(r.valorCentavos)}
+        </p>
+        <p>
+          <span className="text-zinc-500">Pedido em:</span> {quando(r.criadoEm)}
+          {aprovadaPorNome && r.aprovadaEm && (
+            <>
+              {' · '}
+              <span className="text-zinc-500">decidido por</span> {aprovadaPorNome} em {quando(r.aprovadaEm)}
+            </>
+          )}
+        </p>
+        {r.motivoRecusa && (
+          <p>
+            <span className="text-zinc-500">Motivo da recusa:</span> {r.motivoRecusa}
+          </p>
+        )}
+      </section>
+
+      {cobranca && (
+        <section className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 text-sm">
+          <h2 className="font-semibold">Pagamento</h2>
+          <p>
+            {formatarReais(cobranca.valorCobradoCentavos)} · cobrança {cobranca.status}
+            {cobranca.meio === 'pix_manual' && ' · Pix conferido manualmente'}
+            {cobranca.pagoEm && ` · pago em ${quando(cobranca.pagoEm)}`}
+          </p>
+          {r.status === 'aguardando_pagamento' && cobranca.venceEm && (
+            <p>
+              Pagar até <strong>{quando(cobranca.venceEm)}</strong>. Sem pagamento até lá, o horário é liberado.
+            </p>
+          )}
+          {r.status === 'expirada' && cobranca.status === 'expirada' && (
+            <p className="text-amber-900">
+              O prazo de pagamento venceu. Se o Pix chegou mesmo assim, marque abaixo: se o horário ainda estiver livre, a reserva volta.
+            </p>
+          )}
+          {podeMarcarPago && (
+            <form action={marcarPagoAction}>
+              <input type="hidden" name="id" value={r.id} />
+              <button type="submit" className={`${botao} bg-zinc-900 text-white`}>
+                Marcar pagamento como recebido
+              </button>
+              <p className="mt-1 text-xs text-zinc-600">Confira o Pix no seu banco antes de marcar. A reserva é confirmada na hora.</p>
+            </form>
+          )}
+        </section>
+      )}
+
+      {r.status === 'confirmada' && (
+        <section className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 text-sm">
+          <h2 className="font-semibold">Código de acesso</h2>
+          <p className="text-zinc-700">
+            {r.codigoAcessoEnviadoEm
+              ? `Enviado em ${quando(r.codigoAcessoEnviadoEm)}. Pode enviar outro, se precisar.`
+              : 'Ainda não enviado. Gere o código no aplicativo da fechadura e digite aqui.'}
+          </p>
+          <form action={enviarCodigoAction} className="flex flex-wrap items-end gap-2">
+            <input type="hidden" name="id" value={r.id} />
+            <div>
+              <label htmlFor="codigo" className="block text-xs text-zinc-600">
+                Código
+              </label>
+              <input id="codigo" name="codigo" required autoComplete="off" maxLength={20} className="rounded-lg border border-zinc-300 px-3 py-2" />
+            </div>
+            <button type="submit" className={`${botao} bg-zinc-900 text-white`}>
+              {r.codigoAcessoEnviadoEm ? 'Reenviar código' : 'Enviar código'}
+            </button>
+          </form>
+          <p className="text-xs text-zinc-600">O código fica guardado só até a reserva terminar e depois é apagado.</p>
+        </section>
+      )}
+
+      <section aria-label="Histórico" className="rounded-2xl border border-zinc-200 bg-white p-4">
+        <h2 className="mb-2 font-semibold">Histórico</h2>
+        {historico.length === 0 ? (
+          <p className="text-sm text-zinc-600">Sem registros.</p>
+        ) : (
+          <ul className="space-y-1 text-sm">
+            {historico.map((h, i) => (
+              <li key={i}>
+                {quando(h.quando)} · {NOME_ACAO[h.acao] ?? h.acao}
+                {h.quem ? ` por ${h.quem}` : ' (automático)'}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}

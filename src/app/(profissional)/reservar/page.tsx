@@ -217,10 +217,12 @@ export default async function Reservar({ searchParams }: { searchParams: Promise
             {meus.map((r) => {
               const s = STATUS[r.status] ?? { nome: r.status, cor: 'bg-zinc-100 text-zinc-700' };
               return (
-                <li key={r.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200 bg-white p-3 text-sm">
-                  <span>{descreverPeriodo(r.inicio, r.fim)}</span>
-                  <span className="text-zinc-600">{formatarReais(r.valorCentavos)}</span>
-                  <span className={`ml-auto rounded-full px-2 py-0.5 text-xs ${s.cor}`}>{s.nome}</span>
+                <li key={r.id}>
+                  <Link href={`/minhas-reservas/${r.id}`} className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200 bg-white p-3 text-sm hover:border-zinc-400">
+                    <span>{descreverPeriodo(r.inicio, r.fim)}</span>
+                    <span className="text-zinc-600">{formatarReais(r.valorCentavos)}</span>
+                    <span className={`ml-auto rounded-full px-2 py-0.5 text-xs ${s.cor}`}>{s.nome}</span>
+                  </Link>
                 </li>
               );
             })}
