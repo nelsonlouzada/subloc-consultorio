@@ -69,6 +69,16 @@ function Formulario() {
       <p role="alert" aria-live="polite" className="min-h-5 text-sm text-red-700">
         {erro}
       </p>
+      {params.get('aviso') === 'senha_alterada' && (
+        <p role="status" className="text-sm text-green-800">
+          Senha alterada. Entre com a nova senha.
+        </p>
+      )}
+      <p className="text-right text-sm">
+        <Link href="/esqueci-senha" className="underline">
+          Esqueci minha senha
+        </Link>
+      </p>
       <button
         type="submit"
         disabled={enviando}

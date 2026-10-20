@@ -24,8 +24,14 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    minPasswordLength: 10,
+    resetPasswordTokenExpiresIn: 60 * 60,
     sendResetPassword: async ({ user, url }) => {
-      await enviarEmail(user.email, 'Redefinir senha', `<p>Para redefinir a senha, <a href="${url}">clique aqui</a>.</p>`);
+      await enviarEmail(
+        user.email,
+        'Criar nova senha',
+        `<p>Recebemos um pedido para criar uma nova senha. <a href="${url}">Clique aqui para criá-la</a>. O link vale por 1 hora.</p><p>Se não foi você, ignore este e-mail: sua senha continua a mesma.</p>`,
+      );
     },
   },
   emailVerification: {
