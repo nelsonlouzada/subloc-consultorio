@@ -6,7 +6,7 @@ import { db, pool, schema } from '@/db';
 // Troca só o envio real; o registro em `notificacao` roda no Postgres de verdade.
 const enviarEmail = vi.fn<(para: string, assunto: string, html: string) => Promise<void>>();
 vi.mock('@/lib/email', () => ({ enviarEmail: (...a: [string, string, string]) => enviarEmail(...a) }));
-vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }));
+vi.mock('@sentry/node', () => ({ captureException: vi.fn() }));
 
 import { emailCadastroRecusado, emailNovoCadastro, esc } from './modelos';
 import { notificar } from './notificar';

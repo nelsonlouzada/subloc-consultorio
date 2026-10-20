@@ -43,7 +43,55 @@ export function emailNovaSolicitacao(p: { nome: string; periodo: string; valor: 
       `<p><strong>${esc(p.nome)}</strong> pediu a sala.</p>
 <p>${esc(p.periodo)} · ${esc(p.valor)}</p>
 <p>O horário já está retido. Aprove ou recuse dentro do prazo.</p>
-${botao(`${urlBase()}/agenda`, 'Ver na agenda')}`,
+${botao(`${urlBase()}/solicitacoes`, 'Ver solicitações')}`,
+    ),
+  };
+}
+
+export function emailReservaAprovada(p: {
+  nome: string;
+  periodo: string;
+  valor: string;
+  prazoPagamento: string;
+  pix: { chave: string; beneficiario: string } | null;
+}) {
+  const pagamento = p.pix
+    ? `<p><strong>Pague por Pix até ${esc(p.prazoPagamento)}:</strong></p>
+<p>Valor: <strong>${esc(p.valor)}</strong><br>Chave Pix: <strong>${esc(p.pix.chave)}</strong><br>Favorecido: ${esc(p.pix.beneficiario)}</p>
+<p>Depois do pagamento, os responsáveis confirmam o recebimento e a reserva fica confirmada. Sem pagamento até esse horário, o horário é liberado.</p>`
+    : `<p>Valor: <strong>${esc(p.valor)}</strong>. Os responsáveis vão enviar os dados do pagamento. O prazo para pagar vai até ${esc(p.prazoPagamento)}; depois dele o horário é liberado.</p>`;
+  return {
+    assunto: 'Sua reserva foi aprovada: falta o pagamento',
+    html: layout(
+      'Reserva aprovada',
+      `<p>Olá, ${esc(p.nome)}. Seu pedido para <strong>${esc(p.periodo)}</strong> foi aprovado.</p>
+${pagamento}
+${botao(`${urlBase()}/reservar`, 'Ver meus pedidos')}`,
+    ),
+  };
+}
+
+export function emailReservaRecusada(p: { nome: string; periodo: string; motivo: string | null }) {
+  return {
+    assunto: 'Seu pedido de reserva não foi aprovado',
+    html: layout(
+      'Pedido não aprovado',
+      `<p>Olá, ${esc(p.nome)}. Não foi possível aprovar o seu pedido para <strong>${esc(p.periodo)}</strong>. O horário foi liberado.</p>
+${p.motivo ? `<p>Motivo informado: ${esc(p.motivo)}</p>` : ''}
+${botao(`${urlBase()}/reservar`, 'Escolher outro horário')}`,
+    ),
+  };
+}
+
+export function emailReservaExpirada(p: { nome: string; periodo: string; etapa: 'aprovacao' | 'pagamento' }) {
+  return {
+    assunto: 'Seu pedido de reserva expirou',
+    html: layout(
+      'Pedido expirado',
+      `<p>Olá, ${esc(p.nome)}. O pedido para <strong>${esc(p.periodo)}</strong> expirou ${
+        p.etapa === 'aprovacao' ? 'sem resposta dentro do prazo' : 'porque o pagamento não foi confirmado dentro do prazo'
+      }, e o horário foi liberado.</p>
+${botao(`${urlBase()}/reservar`, 'Fazer um novo pedido')}`,
     ),
   };
 }

@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/nextjs';
+import * as Sentry from '@sentry/node';
 import { and, eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { enviarEmail } from '@/lib/email';

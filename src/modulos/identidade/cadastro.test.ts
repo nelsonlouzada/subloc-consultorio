@@ -5,7 +5,7 @@ import { db, pool, schema } from '@/db';
 
 const enviarEmail = vi.fn<(para: string, assunto: string, html: string) => Promise<void>>();
 vi.mock('@/lib/email', () => ({ enviarEmail: (...a: [string, string, string]) => enviarEmail(...a) }));
-vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }));
+vi.mock('@sentry/node', () => ({ captureException: vi.fn() }));
 
 import { garantirDocumentosIniciais } from '@/modulos/configuracao/documentos-iniciais';
 import { cadastrarProfissional, esquemaCadastro } from './cadastro';

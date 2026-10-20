@@ -1,11 +1,17 @@
 import Link from 'next/link';
 import BotaoSair from '@/app/BotaoSair';
 import { exigirAnfitriao } from '@/lib/sessao';
+import { contarSolicitacoes } from '@/modulos/agenda/solicitacao';
+import { carregarSala } from '@/modulos/configuracao/espaco';
 import { contarPendentes } from '@/modulos/identidade/aprovacao';
 
 export default async function LayoutAnfitriao({ children }: { children: React.ReactNode }) {
   const sessao = await exigirAnfitriao();
-  const pendentes = await contarPendentes();
+  const sala = await carregarSala();
+  const [pendentes, solicitacoes] = await Promise.all([
+    contarPendentes(),
+    sala ? contarSolicitacoes(sala.espaco.id) : Promise.resolve(0),
+  ]);
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900">
       <header className="border-b border-zinc-200 bg-white">
@@ -17,6 +23,15 @@ export default async function LayoutAnfitriao({ children }: { children: React.Re
             </Link>
             <Link href="/agenda" className="hover:underline">
               Agenda
+            </Link>
+            <Link href="/solicitacoes" className="hover:underline">
+              Solicitações
+              {solicitacoes > 0 && (
+                <span className="ml-1 rounded-full bg-amber-200 px-1.5 text-xs text-amber-900">
+                  {solicitacoes}
+                  <span className="sr-only"> pedido(s) para aprovar</span>
+                </span>
+              )}
             </Link>
             <Link href="/profissionais" className="hover:underline">
               Profissionais

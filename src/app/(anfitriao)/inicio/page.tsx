@@ -4,6 +4,7 @@ import { somarDias, formatarDataISO, type DataLocal } from '@/lib/fuso';
 import { listarAgenda } from '@/modulos/agenda/bloqueio';
 import { hojeLocal, horaTexto, limitesDoDia, nomeDiaCurto } from '@/modulos/agenda/calendario';
 import { listarReservasNoPeriodo } from '@/modulos/agenda/reserva';
+import { contarSolicitacoes } from '@/modulos/agenda/solicitacao';
 import { carregarSala } from '@/modulos/configuracao/espaco';
 import { contarPendentes } from '@/modulos/identidade/aprovacao';
 
@@ -48,6 +49,7 @@ export default async function Inicio() {
   const sala = await carregarSala();
   const hoje = hojeLocal();
   const pendentes = await contarPendentes();
+  const solicitacoes = sala ? await contarSolicitacoes(sala.espaco.id) : 0;
 
   return (
     <div className="space-y-6">
@@ -55,16 +57,26 @@ export default async function Inicio() {
 
       <section aria-label="Pendências" className="rounded-2xl border border-zinc-200 bg-white p-4">
         <h2 className="mb-1 font-semibold">O que precisa de ação</h2>
-        {pendentes > 0 ? (
-          <p className="text-sm">
-            <Link href="/profissionais" className="font-medium underline">
-              {pendentes} {pendentes === 1 ? 'cadastro espera' : 'cadastros esperam'} aprovação
-            </Link>
-          </p>
+        {pendentes + solicitacoes > 0 ? (
+          <ul className="space-y-1 text-sm">
+            {solicitacoes > 0 && (
+              <li>
+                <Link href="/solicitacoes" className="font-medium underline">
+                  {solicitacoes} {solicitacoes === 1 ? 'pedido de reserva espera' : 'pedidos de reserva esperam'} decisão
+                </Link>
+              </li>
+            )}
+            {pendentes > 0 && (
+              <li>
+                <Link href="/profissionais" className="font-medium underline">
+                  {pendentes} {pendentes === 1 ? 'cadastro espera' : 'cadastros esperam'} aprovação
+                </Link>
+              </li>
+            )}
+          </ul>
         ) : (
           <p className="text-sm text-zinc-600">
-            Nenhuma pendência. Solicitações de reserva, códigos de acesso a enviar e pagamentos prestes a expirar
-            aparecem aqui nos próximos blocos.
+            Nenhuma pendência. Códigos de acesso a enviar e pagamentos prestes a expirar aparecem aqui no próximo bloco.
           </p>
         )}
       </section>

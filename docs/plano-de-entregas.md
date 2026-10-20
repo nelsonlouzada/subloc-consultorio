@@ -189,3 +189,11 @@ Para o uso real: o Resend só entrega ao e-mail da conta até haver domínio ver
 Feito e verificado no navegador (Profissional pendente pede um turno, vê o resumo com preço, aceita o termo e envia; o Anfitrião vê a reserva na agenda): conferência única do pedido (`avaliarPedido`, usada pelo resumo e pela criação), disponibilidade com as mesmas regras do banco (testada contra o Postgres em todas as combinações de início e fim), opções do dia, T10 (semana, turno, hora, dia inteiro, Meus pedidos) e T11 (resumo, como o valor foi calculado, termo com aceite). O preço nunca vem do formulário. Teto de 5 pedidos em aberto por Profissional (decisão de produto a confirmar). 136 testes.
 
 Falta na E2: bloco D (aprovação e prazos), bloco E (pagamento manual e acesso).
+
+### E2, bloco D: aprovação e prazos (2026-10-20)
+
+Feito e verificado no navegador (Profissional pendente pede o dia inteiro; o Anfitrião aprova cadastro e pedido juntos na T22; o pedido vira "aguardando pagamento" com cobrança e prazo) e no worker real (um pedido vencido foi expirado sozinho em cerca de um minuto): aprovar com prazo de pagamento encadeado (D3), recusar liberando o horário, aprovar cadastro e pedido juntos (A3), expiração por falta de aprovação e por falta de pagamento (com a cobrança), job no worker a cada minuto, e-mails de aprovada, recusada e expirada, T22 (para aprovar e aguardando pagamento) e contadores no menu e no Início. 151 testes, incluindo decisões simultâneas e dois processos expirando ao mesmo tempo.
+
+Para o deploy: o serviço `worker` no Railway precisa das variáveis `RESEND_API_KEY`, `EMAIL_REMETENTE` e `BETTER_AUTH_URL` (ele agora envia e-mail e monta links), além de `DATABASE_URL`. E, para o e-mail de aprovação trazer o Pix, `PIX_MANUAL_CHAVE` e `PIX_MANUAL_NOME` no serviço `web` e no `worker`.
+
+Falta na E2: bloco E (pagamento manual, código de acesso, minhas reservas, lembrete da véspera).
