@@ -30,6 +30,7 @@ const NOME_ACAO: Record<string, string> = {
   reserva_aprovada: 'Pedido aprovado',
   reserva_recusada: 'Pedido recusado',
   reserva_cancelada: 'Reserva cancelada',
+  reserva_cancelada_profissional: 'Reserva cancelada pelo profissional',
   reserva_expirada_aprovacao: 'Expirou sem aprovação',
   reserva_expirada_pagamento: 'Expirou sem pagamento',
   pagamento_marcado: 'Pagamento marcado como recebido',

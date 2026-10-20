@@ -4,21 +4,39 @@ import { z } from 'zod';
 import { formatarReais } from '@/lib/dinheiro';
 import { exigirProfissional } from '@/lib/sessao';
 import { descreverMomento, descreverPeriodo } from '@/modulos/agenda/calendario';
+import { previaCancelamento } from '@/modulos/agenda/cancelamento';
 import { obterReserva, ROTULO_STATUS } from '@/modulos/agenda/consulta';
+import { cancelarMinhaReservaAction } from '../actions';
 
 export const metadata = { title: 'Reserva' };
 
+const AVISOS: Record<string, string> = {
+  cancelada: 'Reserva cancelada e horário liberado.',
+  cancelada_credito: 'Reserva cancelada e horário liberado. O crédito já está na sua carteira.',
+};
+const ERROS: Record<string, string> = {
+  iniciada: 'A reserva já começou e não pode mais ser cancelada.',
+  estado: 'O estado desta reserva mudou. Confira abaixo.',
+};
 const UNIDADE = { hora: 'por hora', turno: 'turno', dia: 'dia inteiro' } as const;
 
-export default async function DetalheDaReserva({ params }: { params: Promise<{ id: string }> }) {
+export default async function DetalheDaReserva({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ aviso?: string; erro?: string }>;
+}) {
   const { sessao } = await exigirProfissional();
   const { id } = await params;
+  const { aviso, erro } = await searchParams;
   if (!z.string().uuid().safeParse(id).success) notFound();
   const dados = await obterReserva(id);
   // Reserva de outra pessoa é como se não existisse.
   if (!dados || dados.reserva.profissionalId !== sessao.user.id) notFound();
 
   const { reserva: r, cobranca } = dados;
+  const previa = await previaCancelamento(r.id, sessao.user.id);
   const s = ROTULO_STATUS[r.status] ?? { nome: r.status, cor: 'bg-zinc-100 text-zinc-700' };
   const chave = process.env.PIX_MANUAL_CHAVE?.trim();
   const favorecido = process.env.PIX_MANUAL_NOME?.trim();
@@ -44,6 +62,17 @@ export default async function DetalheDaReserva({ params }: { params: Promise<{ i
       <p className="text-sm text-zinc-700">
         {UNIDADE[r.unidade]} · {formatarReais(r.valorCentavos)}
       </p>
+
+      {aviso && AVISOS[aviso] && (
+        <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-900">
+          {AVISOS[aviso]}
+        </p>
+      )}
+      {erro && ERROS[erro] && (
+        <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">
+          {ERROS[erro]}
+        </p>
+      )}
 
       {r.status === 'solicitada' && (
         <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -95,14 +124,43 @@ export default async function DetalheDaReserva({ params }: { params: Promise<{ i
       )}
       {r.status === 'cancelada' && (
         <p className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700">
-          Esta reserva foi cancelada pelos responsáveis e o horário foi liberado.
-          {cobranca?.status === 'paga' ? ` O valor pago${r.creditoGeradoCentavos ? ` (${formatarReais(r.creditoGeradoCentavos)})` : ''} virou crédito na sua carteira.` : ''}
+          {r.canceladaPor === r.profissionalId ? 'Você cancelou esta reserva e o horário foi liberado.' : 'Esta reserva foi cancelada pelos responsáveis e o horário foi liberado.'}
+          {r.creditoGeradoCentavos
+            ? ` ${formatarReais(r.creditoGeradoCentavos)} viraram crédito na sua carteira.`
+            : cobranca?.status === 'paga'
+              ? ' Pela política de cancelamento, não houve crédito.'
+              : ''}
         </p>
       )}
       {r.status === 'expirada' && (
         <p className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700">
           Este pedido expirou e o horário foi liberado. Se você já pagou, fale com os responsáveis pela sala.
         </p>
+      )}
+
+      {previa.podeCancelar && (
+        <section className="space-y-3 rounded-2xl border border-red-200 bg-white p-4 text-sm">
+          <h2 className="font-semibold">{r.status === 'solicitada' ? 'Retirar o pedido' : 'Cancelar a reserva'}</h2>
+          {previa.pago ? (
+            previa.creditoCentavos > 0 ? (
+              <p>
+                Cancelando agora, <strong>{formatarReais(previa.creditoCentavos)}</strong> ({previa.percentual}% do valor) voltam como crédito na sua carteira (a validade aparece em Carteira).
+              </p>
+            ) : (
+              <p>
+                Faltam menos de 24 horas para o horário: cancelando agora, <strong>não há crédito</strong> (pela política de cancelamento). Se tiver um imprevisto, fale com os responsáveis.
+              </p>
+            )
+          ) : (
+            <p>O horário será liberado.{r.status === 'aguardando_pagamento' ? ' Como o pagamento ainda não foi feito, você não perde nada, e o crédito que abatia o pedido volta para a carteira.' : ''}</p>
+          )}
+          <form action={cancelarMinhaReservaAction}>
+            <input type="hidden" name="id" value={r.id} />
+            <button type="submit" className="rounded-lg border border-red-700 bg-white px-4 py-2.5 font-medium text-red-800 hover:bg-red-700 hover:text-white">
+              {r.status === 'solicitada' ? 'Retirar o pedido' : 'Confirmar o cancelamento'}
+            </button>
+          </form>
+        </section>
       )}
 
       <section aria-label="Linha do tempo" className="rounded-2xl border border-zinc-200 bg-white p-4">

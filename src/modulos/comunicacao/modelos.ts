@@ -141,6 +141,35 @@ ${botao(`${urlBase()}/reservar`, 'Escolher outro horário')}`,
   };
 }
 
+export function emailCancelamentoConfirmado(p: { nome: string; periodo: string; credito: string | null; percentual: number; pago: boolean }) {
+  const dinheiro = p.credito
+    ? `<p>Pela política de cancelamento (${p.percentual}% do valor), <strong>${esc(p.credito)}</strong> virou crédito na sua carteira e pode ser usado numa nova reserva.</p>`
+    : p.pago
+      ? '<p>Pela política de cancelamento, não há crédito para este cancelamento, porque faltava pouco tempo para o horário.</p>'
+      : '';
+  return {
+    assunto: 'Reserva cancelada',
+    html: layout(
+      'Reserva cancelada',
+      `<p>Olá, ${esc(p.nome)}. Você cancelou a reserva de <strong>${esc(p.periodo)}</strong>. O horário foi liberado e o código de acesso, se havia, deixou de valer.</p>
+${dinheiro}
+${botao(`${urlBase()}/carteira`, 'Ver minha carteira')}`,
+    ),
+  };
+}
+
+export function emailCancelamentoAvisoAnfitriao(p: { nome: string; periodo: string; credito: string | null; statusAnterior: string }) {
+  return {
+    assunto: 'Reserva cancelada pelo profissional',
+    html: layout(
+      'Reserva cancelada',
+      `<p>${esc(p.nome)} cancelou a reserva de <strong>${esc(p.periodo)}</strong> (estava ${esc(p.statusAnterior.replace('_', ' '))}). O horário voltou a ficar livre.</p>
+${p.credito ? `<p>Crédito gerado na carteira da pessoa, pela política: ${esc(p.credito)}.</p>` : ''}
+${botao(`${urlBase()}/agenda`, 'Ver a agenda')}`,
+    ),
+  };
+}
+
 export function emailReservaExpirada(p: { nome: string; periodo: string; etapa: 'aprovacao' | 'pagamento' }) {
   return {
     assunto: 'Seu pedido de reserva expirou',
