@@ -149,7 +149,9 @@ Cobrança recorrente no cartão, código automático na fechadura, WhatsApp, int
 
 **Teste de risco do Asaas sandbox: aprovado.** Cliente com CPF, cobrança Pix, QR Code com copia-e-cola e webhook (5 envios com resposta 200 em produção, token conferido, idempotência por `webhook_evento`). Pessoa física não é bloqueio. A chave Pix da conta é pré-requisito para gerar o QR Code.
 
-Pendências da E0 (não bloqueiam a E1): confirmar `[worker] no ar` no log do worker; desligar o TCP Proxy público do Postgres; verificar um domínio no Resend antes da E2.
+Confirmado em produção em 2026-10-19: worker no ar com batimento a cada 5 minutos; TCP Proxy público do Postgres desligado.
+
+Pendência que sobra da E0: verificar um domínio no Resend antes da E2 (hoje o Resend só entrega para o e-mail da própria conta).
 
 Lições da implantação (valem para as próximas etapas):
 - Variável no Railway com **espaço no nome** (colada junto) é descartada em silêncio. Conferir tamanho e presença das variáveis antes de culpar o código.
