@@ -6,7 +6,7 @@ import { exigirAnfitriao } from '@/lib/sessao';
 import { listarAuditoriaDe } from '@/modulos/auditoria/auditoria';
 import { descreverMomento, descreverPeriodo } from '@/modulos/agenda/calendario';
 import { obterReserva, ROTULO_STATUS } from '@/modulos/agenda/consulta';
-import { enviarCodigoAction, marcarPagoAction } from '../actions';
+import { cancelarReservaAction, enviarCodigoAction, marcarPagoAction } from '../actions';
 
 export const metadata = { title: 'Reserva' };
 
@@ -14,16 +14,21 @@ const AVISOS: Record<string, string> = {
   pago: 'Pagamento registrado. A reserva está confirmada e o profissional foi avisado por e-mail.',
   pago_reativada: 'Pagamento registrado. O horário ainda estava livre: a reserva voltou e está confirmada.',
   codigo: 'Código enviado ao profissional por e-mail.',
+  cancelada: 'Reserva cancelada. O horário foi liberado e o profissional foi avisado por e-mail.',
+  cancelada_paga:
+    'Reserva cancelada e o horário liberado. Atenção: o pagamento já tinha sido recebido e a devolução ainda precisa ser feita por você, por fora do sistema.',
 };
 const ERROS: Record<string, string> = {
   horario: 'O pedido já expirou e o horário não está mais livre. O pagamento precisa ser resolvido por fora (devolução ou outro horário).',
   estado: 'O estado desta reserva mudou. Confira abaixo e tente de novo.',
   codigo: 'Código inválido. Use de 3 a 20 caracteres: números, letras, * # ou -.',
+  iniciada: 'A reserva já começou e não pode mais ser cancelada.',
 };
 const NOME_ACAO: Record<string, string> = {
   reserva_solicitada: 'Pedido enviado',
   reserva_aprovada: 'Pedido aprovado',
   reserva_recusada: 'Pedido recusado',
+  reserva_cancelada: 'Reserva cancelada',
   reserva_expirada_aprovacao: 'Expirou sem aprovação',
   reserva_expirada_pagamento: 'Expirou sem pagamento',
   pagamento_marcado: 'Pagamento marcado como recebido',
@@ -52,6 +57,7 @@ export default async function ReservaDoAnfitriao({
   const s = ROTULO_STATUS[r.status] ?? { nome: r.status, cor: 'bg-zinc-100 text-zinc-700' };
 
   const podeMarcarPago = r.status === 'aguardando_pagamento' || (r.status === 'expirada' && cobranca?.status === 'expirada');
+  const podeCancelar = (r.status === 'aguardando_pagamento' || r.status === 'confirmada') && r.inicio > new Date();
 
   return (
     <div className="space-y-5">
@@ -152,6 +158,28 @@ export default async function ReservaDoAnfitriao({
             </button>
           </form>
           <p className="text-xs text-zinc-600">O código fica guardado só até a reserva terminar e depois é apagado.</p>
+        </section>
+      )}
+
+      {podeCancelar && (
+        <section className="space-y-3 rounded-2xl border border-red-200 bg-white p-4 text-sm">
+          <h2 className="font-semibold">Cancelar reserva</h2>
+          <p className="text-zinc-700">
+            O horário é liberado na hora, o código de acesso deixa de valer e o profissional é avisado por e-mail.
+            {r.status === 'confirmada' && ' O pagamento já foi recebido: a devolução fica por sua conta, fora do sistema.'}
+          </p>
+          <form action={cancelarReservaAction} className="space-y-2">
+            <input type="hidden" name="id" value={r.id} />
+            <div>
+              <label htmlFor="motivo" className="block text-xs text-zinc-600">
+                Motivo (opcional, vai no e-mail)
+              </label>
+              <input id="motivo" name="motivo" maxLength={500} autoComplete="off" className="w-full rounded-lg border border-zinc-300 px-3 py-2" />
+            </div>
+            <button type="submit" className={`${botao} border border-red-700 bg-white text-red-800 hover:bg-red-700 hover:text-white`}>
+              Cancelar esta reserva
+            </button>
+          </form>
         </section>
       )}
 

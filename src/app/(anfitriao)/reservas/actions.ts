@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { contextoRequisicao, exigirAnfitriao } from '@/lib/sessao';
 import { CodigoInvalidoError, enviarCodigoAcesso } from '@/modulos/agenda/acesso';
+import { cancelarReserva, ReservaJaIniciadaError } from '@/modulos/agenda/cancelamento';
 import { HorarioIndisponivelError, marcarPago } from '@/modulos/agenda/pagamento';
 import { EstadoReservaError, ReservaNaoEncontradaError } from '@/modulos/agenda/solicitacao';
 
@@ -31,6 +32,23 @@ export async function marcarPagoAction(formData: FormData) {
     else throw e;
   }
   voltar(reservaId, aviso);
+}
+
+export async function cancelarReservaAction(formData: FormData) {
+  const sessao = await exigirAnfitriao();
+  const reservaId = ler(formData);
+  const { ip } = await contextoRequisicao();
+  const motivo = String(formData.get('motivo') ?? '');
+  let resultado: string;
+  try {
+    const r = await cancelarReserva(reservaId, sessao.user.id, motivo, { ip });
+    resultado = r.devolucaoPendente ? 'aviso=cancelada_paga' : 'aviso=cancelada';
+  } catch (e) {
+    if (e instanceof ReservaJaIniciadaError) resultado = 'erro=iniciada';
+    else if (e instanceof EstadoReservaError || e instanceof ReservaNaoEncontradaError) resultado = 'erro=estado';
+    else throw e;
+  }
+  voltar(reservaId, resultado);
 }
 
 export async function enviarCodigoAction(formData: FormData) {

@@ -28,6 +28,7 @@ export default async function DetalheDaReserva({ params }: { params: Promise<{ i
   if (r.aprovadaEm && r.status !== 'recusada') eventos.push({ quando: r.aprovadaEm, texto: 'Pedido aprovado' });
   if (r.aprovadaEm && r.status === 'recusada') eventos.push({ quando: r.aprovadaEm, texto: 'Pedido recusado' });
   if (cobranca?.pagoEm) eventos.push({ quando: cobranca.pagoEm, texto: 'Pagamento confirmado' });
+  if (r.canceladaEm) eventos.push({ quando: r.canceladaEm, texto: 'Reserva cancelada' });
   if (r.codigoAcessoEnviadoEm) eventos.push({ quando: r.codigoAcessoEnviadoEm, texto: 'Código de acesso enviado' });
   eventos.sort((a, b) => a.quando.getTime() - b.quando.getTime());
 
@@ -90,6 +91,12 @@ export default async function DetalheDaReserva({ params }: { params: Promise<{ i
 
       {r.status === 'recusada' && r.motivoRecusa && (
         <p className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm">Motivo informado: {r.motivoRecusa}</p>
+      )}
+      {r.status === 'cancelada' && (
+        <p className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700">
+          Esta reserva foi cancelada pelos responsáveis e o horário foi liberado.
+          {cobranca?.status === 'paga' ? ' Como o pagamento já tinha sido recebido, eles vão entrar em contato sobre a devolução.' : ''}
+        </p>
       )}
       {r.status === 'expirada' && (
         <p className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700">

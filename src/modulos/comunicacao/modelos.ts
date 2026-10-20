@@ -121,6 +121,19 @@ ${botao(`${urlBase()}/reservar`, 'Escolher outro horário')}`,
   };
 }
 
+export function emailReservaCancelada(p: { nome: string; periodo: string; motivo: string | null; pago: boolean }) {
+  return {
+    assunto: 'Sua reserva foi cancelada',
+    html: layout(
+      'Reserva cancelada',
+      `<p>Olá, ${esc(p.nome)}. Os responsáveis pela sala cancelaram a sua reserva de <strong>${esc(p.periodo)}</strong>. O horário foi liberado e o código de acesso, se havia, deixou de valer.</p>
+${p.motivo ? `<p>Motivo informado: ${esc(p.motivo)}</p>` : ''}
+${p.pago ? '<p>Como o pagamento já tinha sido recebido, os responsáveis vão entrar em contato para combinar a devolução.</p>' : ''}
+${botao(`${urlBase()}/reservar`, 'Escolher outro horário')}`,
+    ),
+  };
+}
+
 export function emailReservaExpirada(p: { nome: string; periodo: string; etapa: 'aprovacao' | 'pagamento' }) {
   return {
     assunto: 'Seu pedido de reserva expirou',
