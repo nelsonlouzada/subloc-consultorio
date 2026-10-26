@@ -23,6 +23,32 @@ ${corpo}
 const botao = (href: string, texto: string) =>
   `<p><a href="${esc(href)}" style="display:inline-block;background:#18181b;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">${esc(texto)}</a></p>`;
 
+/** E-mail de confirmação do endereço (cadastro e reenvio): mesmo visual dos demais avisos. */
+export function emailConfirmarEndereco(p: { nome: string; url: string }) {
+  return {
+    assunto: 'Confirme seu e-mail',
+    html: layout(
+      'Confirme seu e-mail',
+      `<p>Olá, ${esc(p.nome)}. Para ativar o seu acesso, confirme que este e-mail é seu.</p>
+${botao(p.url, 'Confirmar e-mail')}
+<p style="color:#71717a;font-size:13px">O link vale por 1 hora. Se ele vencer, tente entrar no sistema: enviaremos um novo. Se você não fez este cadastro, ignore esta mensagem.</p>`,
+    ),
+  };
+}
+
+/** E-mail do link para criar uma nova senha. */
+export function emailRedefinirSenha(p: { nome: string; url: string }) {
+  return {
+    assunto: 'Criar nova senha',
+    html: layout(
+      'Criar nova senha',
+      `<p>Olá, ${esc(p.nome)}. Recebemos um pedido para criar uma nova senha.</p>
+${botao(p.url, 'Criar nova senha')}
+<p style="color:#71717a;font-size:13px">O link vale por 1 hora. Se não foi você, ignore este e-mail: a sua senha continua a mesma.</p>`,
+    ),
+  };
+}
+
 export function emailNovoCadastro(p: { nome: string; profissao: string; conselho: string; registro: string; uf: string }) {
   return {
     assunto: `Novo cadastro para aprovar: ${p.nome}`,

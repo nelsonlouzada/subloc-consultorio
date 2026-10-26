@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
+import { DESTINO_APOS_CONFIRMAR } from '@/lib/confirmacao';
 
 function Formulario() {
   const router = useRouter();
@@ -12,11 +13,16 @@ function Formulario() {
     params.get('erro') === 'acesso' ? 'Esta conta não tem acesso à área do Anfitrião.' : null,
   );
   const [enviando, setEnviando] = useState(false);
+  // E-mail de quem tentou entrar sem confirmar o endereço: habilita o botão de reenviar o link.
+  const [naoConfirmado, setNaoConfirmado] = useState<string | null>(null);
+  const [reenvio, setReenvio] = useState<'ocioso' | 'enviando' | 'enviado' | 'falhou'>('ocioso');
 
   async function entrar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (enviando) return;
     setErro(null);
+    setNaoConfirmado(null);
+    setReenvio('ocioso');
     setEnviando(true);
     const dados = new FormData(e.currentTarget);
     const { error } = await authClient.signIn.email({
@@ -25,9 +31,10 @@ function Formulario() {
     });
     if (error) {
       setEnviando(false);
+      if (error.code === 'EMAIL_NOT_VERIFIED') setNaoConfirmado(String(dados.get('email')));
       setErro(
         error.code === 'EMAIL_NOT_VERIFIED'
-          ? 'Confirme seu e-mail antes de entrar.'
+          ? 'Confirme seu e-mail antes de entrar. Enviamos um novo link para o seu endereço (confira também a caixa de spam).'
           : error.status === 429
             ? 'Muitas tentativas. Aguarde um instante e tente de novo.'
             : 'E-mail ou senha incorretos.',
@@ -36,6 +43,13 @@ function Formulario() {
     }
     router.push('/');
     router.refresh();
+  }
+
+  async function reenviar() {
+    if (!naoConfirmado || reenvio === 'enviando') return;
+    setReenvio('enviando');
+    const { error } = await authClient.sendVerificationEmail({ email: naoConfirmado, callbackURL: DESTINO_APOS_CONFIRMAR });
+    setReenvio(error ? 'falhou' : 'enviado');
   }
 
   return (
@@ -69,6 +83,20 @@ function Formulario() {
       <p role="alert" aria-live="polite" className="min-h-5 text-sm text-red-700">
         {erro}
       </p>
+      {naoConfirmado && (
+        <div className="space-y-1 text-sm">
+          <button type="button" onClick={reenviar} disabled={reenvio === 'enviando' || reenvio === 'enviado'} className="underline disabled:opacity-60">
+            {reenvio === 'enviando' ? 'Reenviando…' : 'Reenviar e-mail de confirmação'}
+          </button>
+          {reenvio === 'enviado' && <p role="status">Pronto: o link novo foi enviado para {naoConfirmado}.</p>}
+          {reenvio === 'falhou' && <p role="alert" className="text-red-700">Não foi possível reenviar agora. Tente de novo em instantes.</p>}
+        </div>
+      )}
+      {params.get('aviso') === 'email_confirmado' && (
+        <p role="status" className="text-sm text-green-800">
+          E-mail confirmado. Entre com o seu e-mail e a sua senha.
+        </p>
+      )}
       {params.get('aviso') === 'senha_alterada' && (
         <p role="status" className="text-sm text-green-800">
           Senha alterada. Entre com a nova senha.

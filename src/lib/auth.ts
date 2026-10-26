@@ -1,7 +1,9 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db, schema } from '@/db';
+import { urlDeConfirmacao } from './confirmacao';
 import { enviarEmail } from './email';
+import { emailConfirmarEndereco, emailRedefinirSenha } from '@/modulos/comunicacao/modelos';
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -27,17 +29,17 @@ export const auth = betterAuth({
     minPasswordLength: 10,
     resetPasswordTokenExpiresIn: 60 * 60,
     sendResetPassword: async ({ user, url }) => {
-      await enviarEmail(
-        user.email,
-        'Criar nova senha',
-        `<p>Recebemos um pedido para criar uma nova senha. <a href="${url}">Clique aqui para criá-la</a>. O link vale por 1 hora.</p><p>Se não foi você, ignore este e-mail: sua senha continua a mesma.</p>`,
-      );
+      const m = emailRedefinirSenha({ nome: user.name, url });
+      await enviarEmail(user.email, m.assunto, m.html);
     },
   },
   emailVerification: {
     sendOnSignUp: true,
+    // Quem tenta entrar sem ter confirmado (com a senha certa) recebe um link novo: o primeiro vale 1 hora.
+    sendOnSignIn: true,
     sendVerificationEmail: async ({ user, url }) => {
-      await enviarEmail(user.email, 'Confirme seu e-mail', `<p>Para confirmar o e-mail, <a href="${url}">clique aqui</a>.</p>`);
+      const m = emailConfirmarEndereco({ nome: user.name, url: urlDeConfirmacao(url) });
+      await enviarEmail(user.email, m.assunto, m.html);
     },
   },
 });
