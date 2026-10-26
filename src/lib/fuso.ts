@@ -11,11 +11,36 @@ export function instanteLocal(ano: number, mes: number, dia: number, hora = 0, m
 
 export type DataLocal = { ano: number; mes: number; dia: number };
 
-/** 'YYYY-MM-DD' vindo de um formulário, sem passar por Date (evita deslize de fuso). */
+/** Anos aceitos em datas vindas de formulário ou da URL: fora disso é erro de digitação (ou ataque), não data de agenda. */
+export const ANO_MINIMO = 2000;
+export const ANO_MAXIMO = 2100;
+
+/**
+ * 'YYYY-MM-DD' vindo de um formulário ou da URL, sem passar por Date (evita deslize de fuso).
+ * Só aceita datas que existem no calendário: '2026-02-31' e '9999-99-99' são recusadas (antes eram
+ * "corrigidas" em silêncio, e a segunda chegava ao banco como o ano 10007 e derrubava a página).
+ */
 export function parseDataISO(texto: string): DataLocal {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto);
   if (!m) throw new Error(`Data inválida: ${texto}`);
-  return { ano: Number(m[1]), mes: Number(m[2]), dia: Number(m[3]) };
+  const ano = Number(m[1]);
+  const mes = Number(m[2]);
+  const dia = Number(m[3]);
+  const diasNoMes = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+  if (ano < ANO_MINIMO || ano > ANO_MAXIMO || mes < 1 || mes > 12 || dia < 1 || dia > diasNoMes) {
+    throw new Error(`Data inválida: ${texto}`);
+  }
+  return { ano, mes, dia };
+}
+
+/** A mesma conferência de `parseDataISO`, como pergunta de sim ou não (para validar formulários). */
+export function dataISOValida(texto: string): boolean {
+  try {
+    parseDataISO(texto);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Soma dias a uma data local, já normalizada (31/01 + 1 = 01/02). */

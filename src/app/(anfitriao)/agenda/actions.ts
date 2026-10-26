@@ -3,13 +3,13 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { exigirAnfitriao } from '@/lib/sessao';
-import { formatarDataISO, instanteLocal, parseDataISO, somarDias } from '@/lib/fuso';
+import { dataISOValida, formatarDataISO, instanteLocal, parseDataISO, somarDias } from '@/lib/fuso';
 import { hojeLocal } from '@/modulos/agenda/calendario';
 import { criarBloqueio, criarBloqueiosRecorrentes, removerBloqueio, removerGrupoBloqueios } from '@/modulos/agenda/bloqueio';
 import { ConflitoAgendaError } from '@/modulos/agenda/ocupacao';
 import { carregarSala } from '@/modulos/configuracao/espaco';
 
-const dataISO = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const dataISO = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(dataISOValida, 'Data inexistente');
 
 const esquemaBloqueio = z
   .object({

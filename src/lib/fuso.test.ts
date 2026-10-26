@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { instanteLocal, partesLocais } from './fuso';
+import { ANO_MAXIMO, ANO_MINIMO, dataISOValida, instanteLocal, parseDataISO, partesLocais } from './fuso';
 
 describe('fuso da sala', () => {
   it('07h local é 10h UTC', () => {
@@ -21,3 +21,41 @@ describe('fuso da sala', () => {
     expect(partesLocais(instanteLocal(2026, 10, 18, 12)).diaSemana).toBe(7);
   });
 });
+
+describe('parseDataISO', () => {
+  it('aceita datas que existem, inclusive 29/02 de ano bissexto', () => {
+    expect(parseDataISO('2026-10-26')).toEqual({ ano: 2026, mes: 10, dia: 26 });
+    expect(parseDataISO('2028-02-29')).toEqual({ ano: 2028, mes: 2, dia: 29 });
+    expect(parseDataISO(`${ANO_MINIMO}-01-01`).ano).toBe(2000);
+    expect(parseDataISO(`${ANO_MAXIMO}-12-31`).ano).toBe(2100);
+  });
+
+  it.each([
+    '9999-99-99', // o caso que derrubava três telas com erro 500
+    '2026-02-31',
+    '2026-02-29', // 2026 não é bissexto
+    '2026-13-01',
+    '2026-00-10',
+    '2026-04-31',
+    '2026-10-00',
+    '2026-10-32',
+    '1999-12-31',
+    '2101-01-01',
+    '0000-01-01',
+    '2026-1-5',
+    '26-10-2026',
+    '2026-10-26T10:00',
+    '',
+    'lixo',
+    "2026-10-26'; drop table usuario;--",
+  ])('recusa %j', (texto) => {
+    expect(() => parseDataISO(texto)).toThrow();
+    expect(dataISOValida(texto)).toBe(false);
+  });
+
+  it('dataISOValida diz sim só para o que parseDataISO aceita', () => {
+    expect(dataISOValida('2026-10-26')).toBe(true);
+    expect(dataISOValida('2026-02-30')).toBe(false);
+  });
+});
+
