@@ -2,11 +2,14 @@
 # O worker sobrescreve o comando de início em Settings: npm run worker
 FROM node:22-slim
 
+# Roda como o usuário `node`, sem privilégios: se alguém explorar o app, não tem root no contêiner.
+RUN mkdir -p /app && chown node:node /app
 WORKDIR /app
-COPY package.json package-lock.json ./
+USER node
+COPY --chown=node:node package.json package-lock.json ./
 RUN npm ci
 
-COPY . .
+COPY --chown=node:node . .
 
 # Valores só para o `next build` conseguir carregar os módulos; nada disso vai para produção.
 # Em produção valem as variáveis do serviço, lidas na hora de rodar.
@@ -20,4 +23,5 @@ RUN DATABASE_URL=postgres://build:build@localhost:5432/build \
 
 ENV NODE_ENV=production
 EXPOSE 3000
+# No Railway, o web usa o caminho de saúde /api/saude (Settings > Healthcheck Path); o worker não tem porta HTTP.
 CMD ["npm", "start"]
