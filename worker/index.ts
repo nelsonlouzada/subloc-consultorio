@@ -4,6 +4,8 @@ import { PgBoss } from 'pg-boss';
 import { encerrarReservas } from '../src/modulos/agenda/encerramento';
 import { expirarPrazos } from '../src/modulos/agenda/expiracao';
 import { enviarLembretesDaVespera } from '../src/modulos/agenda/lembretes';
+import { gerarCobrancasPendentes } from '../src/modulos/agenda/serie-cobranca';
+import { avisarRenovacaoDeSeries } from '../src/modulos/agenda/serie-renovacao';
 import { vencerLotes } from '../src/modulos/carteira/carteira';
 
 Sentry.init({
@@ -72,6 +74,16 @@ async function main() {
   await horaria('vencer-creditos', 15, async () => {
     const n = await vencerLotes();
     return n ? `venceu ${n} lotes de crédito` : null;
+  });
+
+  // Séries (E5): gera a cobrança de cada data/mês 3 dias antes, e avisa perto do fim para renovar.
+  await horaria('cobrar-series', 20, async () => {
+    const n = await gerarCobrancasPendentes();
+    return n ? `gerou ${n} cobranças de séries` : null;
+  });
+  await horaria('renovar-series', 25, async () => {
+    const r = await avisarRenovacaoDeSeries();
+    return r.enviados ? `avisou ${r.enviados} séries perto do fim` : null;
   });
 
   console.log('[worker] no ar');

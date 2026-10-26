@@ -1,4 +1,4 @@
-import { and, count, eq, inArray } from 'drizzle-orm';
+import { and, count, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { registrarAuditoria } from '@/modulos/auditoria/auditoria';
 import { emailPagamentoConfirmado, emailReservaAprovada, emailReservaRecusada } from '@/modulos/comunicacao/modelos';
@@ -71,7 +71,13 @@ export async function listarSolicitacoes(espacoId: string) {
     .from(schema.reserva)
     .innerJoin(schema.profissional, eq(schema.profissional.usuarioId, schema.reserva.profissionalId))
     .innerJoin(schema.usuario, eq(schema.usuario.id, schema.profissional.usuarioId))
-    .where(and(eq(schema.reserva.espacoId, espacoId), inArray(schema.reserva.status, ['solicitada', 'aguardando_pagamento'])))
+    .where(
+      and(
+        eq(schema.reserva.espacoId, espacoId),
+        inArray(schema.reserva.status, ['solicitada', 'aguardando_pagamento']),
+        isNull(schema.reserva.serieId), // as datas de uma série são decididas e cobradas pela série
+      ),
+    )
     .orderBy(schema.reserva.inicio);
 
   // Histórico de cada Profissional: reservas realizadas e faltas (A4).
@@ -88,13 +94,66 @@ export async function listarSolicitacoes(espacoId: string) {
   return linhas.map((l) => ({ ...l, realizadas: de(l.profissionalId, 'realizada'), faltas: de(l.profissionalId, 'falta') }));
 }
 
-/** Quantos pedidos esperam a decisão do Anfitrião (alerta do menu e do Início). */
+/** Quantos pedidos esperam a decisão do Anfitrião (alerta do menu e do Início): uma série conta como um pedido. */
 export async function contarSolicitacoes(espacoId: string): Promise<number> {
-  const [linha] = await db
+  const [avulsas] = await db
     .select({ total: count() })
     .from(schema.reserva)
-    .where(and(eq(schema.reserva.espacoId, espacoId), eq(schema.reserva.status, 'solicitada')));
-  return linha.total;
+    .where(and(eq(schema.reserva.espacoId, espacoId), eq(schema.reserva.status, 'solicitada'), isNull(schema.reserva.serieId)));
+  const [series] = await db
+    .select({ total: count() })
+    .from(schema.serie)
+    .where(and(eq(schema.serie.espacoId, espacoId), eq(schema.serie.status, 'solicitada')));
+  return avulsas.total + series.total;
+}
+
+/** Séries esperando decisão e séries aprovadas com alguma data esperando pagamento, para a tela do Anfitrião (A4). */
+export async function listarSeriesDaFila(espacoId: string) {
+  const base = {
+    id: schema.serie.id,
+    status: schema.serie.status,
+    diasSemana: schema.serie.diasSemana,
+    frequencia: schema.serie.frequencia,
+    unidade: schema.serie.unidade,
+    horaInicio: schema.serie.horaInicio,
+    horaFim: schema.serie.horaFim,
+    dataInicio: schema.serie.dataInicio,
+    dataFim: schema.serie.dataFim,
+    formaPagamento: schema.serie.formaPagamento,
+    criadoEm: schema.serie.criadoEm,
+    profissionalId: schema.profissional.usuarioId,
+    profissionalNome: schema.usuario.name,
+    profissionalStatus: schema.profissional.status,
+  };
+  const dados = await db
+    .select(base)
+    .from(schema.serie)
+    .innerJoin(schema.profissional, eq(schema.profissional.usuarioId, schema.serie.profissionalId))
+    .innerJoin(schema.usuario, eq(schema.usuario.id, schema.profissional.usuarioId))
+    .where(and(eq(schema.serie.espacoId, espacoId), inArray(schema.serie.status, ['solicitada', 'aprovada'])))
+    .orderBy(schema.serie.criadoEm);
+  if (dados.length === 0) return { paraAprovar: [], aguardandoPagamento: [] };
+
+  const resumo = await db
+    .select({
+      serieId: schema.reserva.serieId,
+      status: schema.reserva.status,
+      total: count(),
+      valor: sql<number>`coalesce(sum(${schema.reserva.valorCentavos}), 0)::int`,
+      prazo: sql<Date | null>`min(coalesce(${schema.reserva.prazoPagamentoAte}, ${schema.reserva.prazoAprovacaoAte}))`,
+    })
+    .from(schema.reserva)
+    .where(inArray(schema.reserva.serieId, dados.map((d) => d.id)))
+    .groupBy(schema.reserva.serieId, schema.reserva.status);
+  const de = (id: string, status: string) => resumo.find((r) => r.serieId === id && r.status === status);
+
+  const paraAprovar = dados
+    .filter((x) => x.status === 'solicitada')
+    .map((x) => ({ ...x, ocorrencias: de(x.id, 'solicitada')?.total ?? 0, valorCentavos: de(x.id, 'solicitada')?.valor ?? 0, prazoAprovacaoAte: de(x.id, 'solicitada')?.prazo ? new Date(de(x.id, 'solicitada')!.prazo!) : null }));
+  const aguardandoPagamento = dados
+    .filter((x) => x.status === 'aprovada' && (de(x.id, 'aguardando_pagamento')?.total ?? 0) > 0)
+    .map((x) => ({ ...x, ocorrencias: de(x.id, 'aguardando_pagamento')!.total, valorCentavos: de(x.id, 'aguardando_pagamento')!.valor, prazoPagamentoAte: de(x.id, 'aguardando_pagamento')!.prazo ? new Date(de(x.id, 'aguardando_pagamento')!.prazo!) : null }));
+  return { paraAprovar, aguardandoPagamento };
 }
 
 type Contexto = { ip?: string | null };
@@ -125,6 +184,7 @@ export async function aprovarReserva(
     .innerJoin(schema.regraEspaco, eq(schema.regraEspaco.espacoId, schema.reserva.espacoId))
     .where(eq(schema.reserva.id, reservaId));
   if (!r) throw new ReservaNaoEncontradaError();
+  if (r.reserva.serieId) throw new EstadoReservaError('data de série: decida a série inteira');
   if (r.reserva.status !== 'solicitada') throw new EstadoReservaError(r.reserva.status);
   if (r.reserva.prazoAprovacaoAte && agora >= r.reserva.prazoAprovacaoAte) throw new PrazoVencidoError();
   if (r.profissionalStatus === 'recusado') throw new EstadoReservaError('cadastro recusado');
@@ -226,6 +286,7 @@ export async function recusarReserva(reservaId: string, anfitriaoId: string, mot
     .innerJoin(schema.usuario, eq(schema.usuario.id, schema.reserva.profissionalId))
     .where(eq(schema.reserva.id, reservaId));
   if (!r) throw new ReservaNaoEncontradaError();
+  if (r.reserva.serieId) throw new EstadoReservaError('data de série: decida a série inteira');
   if (r.reserva.status !== 'solicitada') throw new EstadoReservaError(r.reserva.status);
 
   await db.transaction(async (tx) => {

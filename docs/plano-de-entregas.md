@@ -235,3 +235,19 @@ Código completo, com 227 testes, e **verificado contra o sandbox real do Asaas*
 
 Para ligar em produção (depois do Railway voltar): `ASAAS_ATIVO=true`, `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` no `web` (o webhook já está cadastrado no Asaas com o mesmo token), `ASAAS_BASE_URL` só se for sair do sandbox. **Antes de usar o Asaas real com dinheiro**, falta a conversa com o contador (carnê-leão, Pix como pessoa física, crédito vendido antes do uso) e confirmar os limites da conta PF.
 
+### E5: séries recorrentes (2026-10-25)
+
+Código completo, com 278 testes (Postgres real), e **verificado no navegador** de ponta a ponta (a profissional pede a série, o Anfitrião aprova e confirma o pacote do mês, a profissional vê o recibo e cancela a série, e o crédito da política bate: R$ 22,50 + R$ 45,00). A verificação achou três defeitos reais, corrigidos: colisão de rotas entre as telas do Anfitrião e da profissional, histórico da série sem o pagamento, e datas da cobrança fora de ordem.
+
+- **Pedido (P3, T10/T11):** `/reservar/serie`: dias da semana, semanal ou quinzenal, hora/turno/dia, período de até 60 dias (D4) e forma de pagamento. O resumo lista as datas (as indisponíveis ficam de fora, com o motivo) e o preço. Cada data vira uma reserva `solicitada`, todas retendo o horário na mesma transação. A série conta como **um** pedido no teto de 5.
+- **Aprovação (A4):** a série inteira de uma vez, na T22 (como um pedido só) e na página da série (`/series-da-sala/[id]`). Cadastro pendente aprova junto. As datas passam ao novo estado `aprovada` (horário retido, cobrança ainda não gerada).
+- **Cobrança:** *pacote do mês* (10% de desconto, uma cobrança por mês: o primeiro na aprovação, os seguintes 3 dias antes de cada mês) ou *por data* (um link por data, 3 dias antes), com o crédito (D8) abatendo cada cobrança e o Asaas/Pix manual como nas reservas avulsas. O worker gera as cobranças (job `cobrar-series`, de hora em hora). Data que fica sem cobrança perto demais do início é liberada.
+- **Pagamento de várias datas de uma vez:** vale para o Pix manual e para o Asaas. Pagamento atrasado data a data: as livres voltam, as tomadas viram crédito. Sem saldo para reabater o crédito, o dinheiro que chegou vira crédito integral (e o aviso do Asaas, que não pode falhar para sempre, é tratado; o mesmo foi corrigido para a reserva avulsa).
+- **Cancelamento:** de uma data (pela política; data de pacote ainda não pago não sai sozinha) ou da **série inteira** (pagamentos abertos são cancelados e o crédito que os abatia volta; datas pagas voltam em crédito pela política, cada uma pela própria antecedência, ou integral se for o Anfitrião).
+- **Renovação (D4):** `/series/[id]` oferece "Renovar série" com o pedido já preenchido para o período seguinte (mesmo ritmo, no máximo 60 dias à frente); a renovação é um pedido novo, ligado ao anterior. Um aviso por e-mail sai uma vez, quando faltam `aviso_renovacao_serie_dias` (7) dias (job `renovar-series`).
+- **Telas novas:** profissional: Séries (lista), `/series/[id]`, `/reservar/serie` e resumo; Anfitrião: `/series-da-sala/[id]` e as séries na fila de Solicitações. Série aprovada/encerrada fica em "Pendentes" em Minhas reservas.
+
+Para o deploy: a migração 0009 roda sozinha no pré-deploy. O worker ganhou os jobs `cobrar-series` e `renovar-series`.
+
+Fica para depois: ajuste de uma série já aprovada (hoje se cancela e se pede de novo), cobrança por cartão recorrente (fase 2) e a tela da T26 para editar o desconto do pacote do mês e o aviso de renovação (hoje em `regra_espaco`).
+

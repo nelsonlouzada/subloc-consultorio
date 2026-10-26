@@ -148,7 +148,7 @@ ${botao(`${urlBase()}/reservar`, 'Escolher outro horário')}`,
   };
 }
 
-export function emailNovaSerie(p: { nome: string; resumo: string; ocorrencias: number; total: string; pacote: boolean }) {
+export function emailNovaSerie(p: { nome: string; resumo: string; ocorrencias: number; total: string; pacote: boolean; serieId: string }) {
   return {
     assunto: `Nova solicitação de série: ${p.nome}`,
     html: layout(
@@ -156,7 +156,7 @@ export function emailNovaSerie(p: { nome: string; resumo: string; ocorrencias: n
       `<p><strong>${esc(p.nome)}</strong> pediu uma série: ${esc(p.resumo)}.</p>
 <p>${p.ocorrencias} ${p.ocorrencias === 1 ? 'data' : 'datas'}, total de <strong>${esc(p.total)}</strong>${p.pacote ? ' (pacote do mês, com desconto)' : ' (pagamento por ocorrência)'}.</p>
 <p>Os horários já estão retidos. Aprove ou recuse a série inteira dentro do prazo.</p>
-${botao(`${urlBase()}/solicitacoes`, 'Ver solicitações')}`,
+${botao(`${urlBase()}/series-da-sala/${encodeURIComponent(p.serieId)}`, 'Abrir a série')}`,
     ),
   };
 }

@@ -146,9 +146,10 @@ export async function confirmarCobrancaDeSerie(
   await registrarAuditoria({
     usuarioId: quem.usuarioId,
     acao: atrasado ? 'pagamento_serie_atrasado' : 'pagamento_serie_marcado',
-    entidade: 'cobranca',
-    entidadeId: cobrancaId,
-    dados: { ...resultado, valorCentavos: c.cobranca.valorCobradoCentavos, meio: quem.meio },
+    // Fica no histórico da série (que é o que o Anfitrião consulta); a cobrança vai nos dados.
+    entidade: 'serie',
+    entidadeId: itens[0].reserva.serieId ?? cobrancaId,
+    dados: { ...resultado, cobrancaId, valorCentavos: c.cobranca.valorCobradoCentavos, meio: quem.meio },
     ip: opcoes.ip ?? null,
   });
 

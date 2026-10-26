@@ -34,6 +34,7 @@ export type ReservaDetalhada = NonNullable<Awaited<ReturnType<typeof obterReserv
 /** Rótulos de estado, os mesmos em todas as telas. */
 export const ROTULO_STATUS: Record<string, { nome: string; cor: string }> = {
   solicitada: { nome: 'Aguardando aprovação', cor: 'bg-amber-100 text-amber-900' },
+  aprovada: { nome: 'Aprovada, pagamento em breve', cor: 'bg-sky-100 text-sky-900' },
   aguardando_pagamento: { nome: 'Aprovada, aguardando pagamento', cor: 'bg-orange-100 text-orange-900' },
   confirmada: { nome: 'Confirmada', cor: 'bg-green-100 text-green-900' },
   realizada: { nome: 'Realizada', cor: 'bg-zinc-100 text-zinc-700' },

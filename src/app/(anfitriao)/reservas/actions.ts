@@ -6,7 +6,8 @@ import { contextoRequisicao, exigirAnfitriao } from '@/lib/sessao';
 import { CodigoInvalidoError, enviarCodigoAcesso } from '@/modulos/agenda/acesso';
 import { cancelarReserva, OcorrenciaEmPacoteError, ReservaJaIniciadaError } from '@/modulos/agenda/cancelamento';
 import { desfazerFalta, registrarFalta, ReservaNaoIniciadaError } from '@/modulos/agenda/falta';
-import { CreditoInsuficienteError, marcarPago } from '@/modulos/agenda/pagamento';
+import { marcarPagoDaReserva } from '@/modulos/agenda/marcar-pago';
+import { CreditoInsuficienteError } from '@/modulos/agenda/pagamento';
 import { EstadoReservaError, ReservaNaoEncontradaError } from '@/modulos/agenda/solicitacao';
 
 const id = z.string().uuid();
@@ -25,7 +26,7 @@ export async function marcarPagoAction(formData: FormData) {
   const { ip } = await contextoRequisicao();
   let aviso: string;
   try {
-    const r = await marcarPago(reservaId, sessao.user.id, { ip });
+    const r = await marcarPagoDaReserva(reservaId, sessao.user.id, { ip });
     aviso = r.creditoCentavos > 0 ? 'aviso=pago_credito' : r.reativada ? 'aviso=pago_reativada' : 'aviso=pago';
   } catch (e) {
     if (e instanceof CreditoInsuficienteError) aviso = 'erro=credito_devolvido';

@@ -208,13 +208,14 @@ export async function avaliarSerie(
 
 const DIAS_LONGOS = ['segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado', 'domingo'];
 
-/** 'toda terça e quinta, 09:00 às 10:00, de 03/11 a 30/11' (ou 'a cada duas semanas'). */
-export function descreverSerie(s: { diasSemana: number[]; frequencia: 'semanal' | 'quinzenal'; horaInicio: number; horaFim: number; dataInicio: string; dataFim: string }): string {
+/** 'toda terça e quinta, 09:00 às 10:00, de 03/11 a 30/11' (ou 'a cada duas semanas'). Sem horas (turno/dia inteiro), omite o horário. */
+export function descreverSerie(s: { diasSemana: number[]; frequencia: 'semanal' | 'quinzenal'; horaInicio: number | null; horaFim: number | null; dataInicio: string; dataFim: string }): string {
   const nomes = [...s.diasSemana].sort((a, b) => a - b).map((d) => DIAS_LONGOS[d - 1]);
   const lista = nomes.length > 1 ? `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}` : nomes[0];
   const hh = (h: number) => `${String(h).padStart(2, '0')}:00`;
   const br = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
-  return `${s.frequencia === 'semanal' ? 'toda' : 'a cada duas semanas, '} ${lista}, ${hh(s.horaInicio)} às ${hh(s.horaFim)}, de ${br(s.dataInicio)} a ${br(s.dataFim)}`.replace('  ', ' ');
+  const horario = s.horaInicio != null && s.horaFim != null ? `, ${hh(s.horaInicio)} às ${hh(s.horaFim)}` : '';
+  return `${s.frequencia === 'semanal' ? 'toda' : 'a cada duas semanas,'} ${lista}${horario}, de ${br(s.dataInicio)} a ${br(s.dataFim)}`;
 }
 
 export type ResultadoSerie =
@@ -320,6 +321,7 @@ export async function criarSerie(
     ocorrencias: validas.length,
     total: formatarReais(totalCentavos),
     pacote: pedido.formaPagamento === 'pacote_mes',
+    serieId,
   });
   for (const a of await anfitrioesAtivos()) {
     await notificar({
