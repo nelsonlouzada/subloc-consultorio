@@ -1,8 +1,10 @@
 import { Resend } from 'resend';
+import { assuntoSeguro } from './assunto';
 
 // Sem RESEND_API_KEY, em desenvolvimento, o e-mail é só escrito no console. Em produção a falta
 // da chave é erro: do contrário o aviso ficaria registrado como "enviado" sem ter saído.
-export async function enviarEmail(para: string, assunto: string, html: string) {
+export async function enviarEmail(para: string, assuntoBruto: string, html: string) {
+  const assunto = assuntoSeguro(assuntoBruto); // última defesa: nenhum assunto sai com marcação ou quebra de linha
   const chave = process.env.RESEND_API_KEY;
   if (!chave && process.env.NODE_ENV === 'production') {
     throw new Error('RESEND_API_KEY ausente: e-mail não enviado.');

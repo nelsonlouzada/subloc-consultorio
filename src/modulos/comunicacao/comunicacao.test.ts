@@ -99,10 +99,24 @@ describe('modelos de e-mail', () => {
     });
     expect(html).not.toContain('<img');
     expect(html).toContain('&lt;img');
-    expect(assunto).toContain('<img'); // assunto é texto puro, não HTML
+    expect(assunto).toContain('<img'); // o modelo devolve o texto como veio; quem envia (`notificar`/`enviarEmail`) sanea o assunto
   });
 
   it('o motivo da recusa também é escapado', () => {
     expect(emailCadastroRecusado('Ana', '<b>x</b>').html).not.toContain('<b>x</b>');
   });
 });
+
+describe('assunto do e-mail (QA-06)', () => {
+  it('notificar envia e registra o assunto sem marcação nem quebra de linha', async () => {
+    const referenciaId = randomUUID();
+    const bruto = 'Novo cadastro para aprovar: <script>alert("xss")</script> QA\r\nBcc: intruso@exemplo.com';
+    expect(await notificar({ ...aviso(referenciaId, 'qa06'), assunto: bruto })).toBe('enviado');
+    const enviado = enviarEmail.mock.calls[0][1];
+    expect(enviado).toBe('Novo cadastro para aprovar: alert("xss") QA Bcc: intruso@exemplo.com');
+    expect(enviado).not.toMatch(/[<>\r\n]/);
+    const [r] = (await registros()).filter((x) => x.referenciaId === referenciaId);
+    expect(r.assunto).toBe(enviado);
+  });
+});
+

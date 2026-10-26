@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/node';
 import { and, eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
+import { assuntoSeguro } from '@/lib/assunto';
 import { enviarEmail } from '@/lib/email';
 
 export type Notificacao = {
@@ -29,12 +30,13 @@ export async function notificar(n: Notificacao): Promise<ResultadoNotificacao> {
     eq(schema.notificacao.referenciaId, n.referenciaId),
     eq(schema.notificacao.usuarioId, n.usuarioId),
   );
+  const assunto = assuntoSeguro(n.assunto);
   const [anterior] = await db.select({ status: schema.notificacao.status }).from(schema.notificacao).where(chave);
   if (anterior?.status === 'enviado') return 'duplicado';
 
   let erro: string | null = null;
   try {
-    await enviarEmail(n.para, n.assunto, n.html);
+    await enviarEmail(n.para, assunto, n.html);
   } catch (e) {
     erro = e instanceof Error ? e.message : String(e);
     Sentry.captureException(e, { tags: { notificacao: n.tipo } });
@@ -43,7 +45,7 @@ export async function notificar(n: Notificacao): Promise<ResultadoNotificacao> {
   const registro = {
     usuarioId: n.usuarioId,
     tipo: n.tipo,
-    assunto: n.assunto,
+    assunto,
     status: erro ? ('falhou' as const) : ('enviado' as const),
     erro,
     referenciaTipo: n.referenciaTipo,
