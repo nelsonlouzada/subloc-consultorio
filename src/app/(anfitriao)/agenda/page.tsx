@@ -70,6 +70,8 @@ function itensDoDia(itens: Linha[], d: DataLocal) {
   return itens.filter((i) => i.inicio < fim && i.fim > ini);
 }
 
+export const metadata = { title: 'Agenda' };
+
 export default async function Agenda({ searchParams }: { searchParams: Promise<Busca> }) {
   await exigirAnfitriao();
   const busca = await searchParams;

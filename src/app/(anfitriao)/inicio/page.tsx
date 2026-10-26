@@ -45,6 +45,8 @@ async function Dia({ titulo, d, espacoId }: { titulo: string; d: DataLocal; espa
   );
 }
 
+export const metadata = { title: 'Início' };
+
 export default async function Inicio() {
   const sessao = await exigirAnfitriao();
   const sala = await carregarSala();

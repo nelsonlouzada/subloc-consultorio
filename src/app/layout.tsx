@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Painel da sala",
+  title: { default: "Painel da sala", template: "%s · Painel da sala" },
   description: "Agenda, reservas e financeiro da sala de consultório.",
   robots: { index: false }, // a página pública (com SEO) chega na E6
 };
