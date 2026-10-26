@@ -57,7 +57,7 @@ export default async function DetalheProfissional({
 
   return (
     <div className="space-y-5">
-      <Link href="/profissionais" className="text-sm underline">
+      <Link href="/profissionais" className="inline-block py-1 text-sm underline">
         ← Voltar à lista
       </Link>
       <h1 className="text-3xl font-bold tracking-tight">{p.nome}</h1>

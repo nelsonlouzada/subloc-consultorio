@@ -27,7 +27,7 @@ export default async function PagarCredito({ params }: { params: Promise<{ id: s
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
-      <Link href="/carteira" className="text-sm underline">
+      <Link href="/carteira" className="inline-block py-1 text-sm underline">
         ← Carteira
       </Link>
       <h1 className="text-3xl font-bold tracking-tight">{c.pacote}</h1>

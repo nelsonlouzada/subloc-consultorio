@@ -54,7 +54,7 @@ export default async function DetalheDaReserva({
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
-      <Link href="/minhas-reservas" className="text-sm underline">
+      <Link href="/minhas-reservas" className="inline-block py-1 text-sm underline">
         ← Minhas reservas
       </Link>
       <div className="flex flex-wrap items-center gap-3">

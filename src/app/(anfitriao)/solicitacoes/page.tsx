@@ -62,7 +62,7 @@ export default async function Solicitacoes({ searchParams }: { searchParams: Pro
             <article key={s.id} className="space-y-3 card p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <strong>{s.profissionalNome}</strong>
-                <Link href={`/profissionais/${encodeURIComponent(s.profissionalId)}`} className="text-sm underline">
+                <Link href={`/profissionais/${encodeURIComponent(s.profissionalId)}`} className="inline-block py-1 text-sm underline">
                   ver cadastro
                 </Link>
                 {pendente && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">Cadastro pendente</span>}

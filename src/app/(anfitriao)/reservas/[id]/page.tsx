@@ -72,7 +72,7 @@ export default async function ReservaDoAnfitriao({
 
   return (
     <div className="space-y-5">
-      <Link href="/solicitacoes" className="text-sm underline">
+      <Link href="/solicitacoes" className="inline-block py-1 text-sm underline">
         ← Solicitações
       </Link>
       <div className="flex flex-wrap items-center gap-3">

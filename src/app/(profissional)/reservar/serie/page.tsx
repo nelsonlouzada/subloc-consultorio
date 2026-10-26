@@ -30,7 +30,7 @@ export default async function ReservarSerie({ searchParams }: { searchParams: Pr
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
-      <Link href="/reservar" className="text-sm underline">
+      <Link href="/reservar" className="inline-block py-1 text-sm underline">
         ← Reservar um horário avulso
       </Link>
       <h1 className="text-2xl font-semibold">Reservar um horário fixo</h1>

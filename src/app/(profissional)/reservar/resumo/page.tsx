@@ -35,7 +35,7 @@ export default async function Resumo({ searchParams }: { searchParams: Promise<P
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
-      <Link href={voltar} className="text-sm underline">
+      <Link href={voltar} className="inline-block py-1 text-sm underline">
         ← Escolher outro horário
       </Link>
       <h1 className="text-3xl font-bold tracking-tight">Resumo do pedido</h1>

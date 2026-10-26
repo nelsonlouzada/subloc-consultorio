@@ -60,7 +60,7 @@ export default async function SerieDoAnfitriao({
 
   return (
     <div className="space-y-5">
-      <Link href="/solicitacoes" className="text-sm underline">
+      <Link href="/solicitacoes" className="inline-block py-1 text-sm underline">
         ← Solicitações
       </Link>
       <div className="flex flex-wrap items-center gap-3">
@@ -179,7 +179,7 @@ export default async function SerieDoAnfitriao({
             const s = ROTULO_STATUS[r.status] ?? { nome: r.status, cor: 'bg-zinc-100 text-zinc-700' };
             return (
               <li key={r.id}>
-                <Link href={`/reservas/${r.id}`} className="flex flex-wrap items-center gap-2 hover:underline">
+                <Link href={`/reservas/${r.id}`} className="flex flex-wrap items-center gap-2 py-1 hover:underline">
                   <span>{descreverPeriodo(r.inicio, r.fim)}</span>
                   <span className="text-zinc-600">{formatarReais(r.valorCentavos)}</span>
                   <span className={`ml-auto rounded-full px-2 py-0.5 text-xs ${s.cor}`}>{s.nome}</span>

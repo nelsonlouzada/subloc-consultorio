@@ -44,7 +44,7 @@ export default async function ResumoSerie({ searchParams }: { searchParams: Prom
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
-      <Link href={voltar} className="text-sm underline">
+      <Link href={voltar} className="inline-block py-1 text-sm underline">
         ← Ajustar a série
       </Link>
       <h1 className="text-2xl font-semibold">Resumo da série</h1>

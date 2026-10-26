@@ -52,7 +52,7 @@ export default async function DetalheDaSerie({
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
-      <Link href="/series" className="text-sm underline">
+      <Link href="/series" className="inline-block py-1 text-sm underline">
         ← Minhas séries
       </Link>
       <div className="flex flex-wrap items-center gap-3">
@@ -121,7 +121,7 @@ export default async function DetalheDaSerie({
             const s = ROTULO_STATUS[r.status] ?? { nome: r.status, cor: 'bg-zinc-100 text-zinc-700' };
             return (
               <li key={r.id}>
-                <Link href={`/minhas-reservas/${r.id}`} className="flex flex-wrap items-center gap-2 hover:underline">
+                <Link href={`/minhas-reservas/${r.id}`} className="flex flex-wrap items-center gap-2 py-1 hover:underline">
                   <span>{descreverPeriodo(r.inicio, r.fim)}</span>
                   <span className="text-zinc-600">{formatarReais(r.valorCentavos)}</span>
                   <span className={`ml-auto rounded-full px-2 py-0.5 text-xs ${s.cor}`}>{s.nome}</span>
