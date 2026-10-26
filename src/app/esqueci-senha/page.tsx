@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { authClient } from '@/lib/auth-client';
+import { usePronto } from '@/lib/usePronto';
 
 export default function EsqueciSenha() {
   const [enviando, setEnviando] = useState(false);
+  const pronto = usePronto();
   const [enviado, setEnviado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -39,7 +41,7 @@ export default function EsqueciSenha() {
             </Link>
           </div>
         ) : (
-          <form onSubmit={pedir} className="space-y-4" noValidate>
+          <form onSubmit={pedir} method="post" className="space-y-4" noValidate>
             <p className="text-sm text-zinc-600">Informe o e-mail do seu cadastro.</p>
             <div>
               <label htmlFor="email" className="mb-1 block text-sm font-medium">
@@ -50,7 +52,7 @@ export default function EsqueciSenha() {
             <p role="alert" aria-live="polite" className="min-h-5 text-sm text-red-700">
               {erro}
             </p>
-            <button type="submit" disabled={enviando} className="w-full btn btn-primary disabled:opacity-60">
+            <button type="submit" disabled={enviando || !pronto} className="w-full btn btn-primary disabled:opacity-60">
               {enviando ? 'Enviando…' : 'Enviar link'}
             </button>
             <Link href="/login" className="block text-center text-sm underline">

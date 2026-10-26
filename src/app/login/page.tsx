@@ -5,6 +5,7 @@ import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import { DESTINO_APOS_CONFIRMAR } from '@/lib/confirmacao';
+import { usePronto } from '@/lib/usePronto';
 
 function Formulario() {
   const router = useRouter();
@@ -13,6 +14,7 @@ function Formulario() {
     params.get('erro') === 'acesso' ? 'Esta conta não tem acesso à área do Anfitrião.' : null,
   );
   const [enviando, setEnviando] = useState(false);
+  const pronto = usePronto();
   // E-mail de quem tentou entrar sem confirmar o endereço: habilita o botão de reenviar o link.
   const [naoConfirmado, setNaoConfirmado] = useState<string | null>(null);
   const [reenvio, setReenvio] = useState<'ocioso' | 'enviando' | 'enviado' | 'falhou'>('ocioso');
@@ -53,7 +55,7 @@ function Formulario() {
   }
 
   return (
-    <form onSubmit={entrar} className="space-y-5" noValidate>
+    <form onSubmit={entrar} method="post" className="space-y-5" noValidate>
       <div>
         <label htmlFor="email" className="mb-1.5 block text-sm font-medium">
           E-mail
@@ -109,7 +111,7 @@ function Formulario() {
       </p>
       <button
         type="submit"
-        disabled={enviando}
+        disabled={enviando || !pronto}
         className="w-full btn btn-primary disabled:opacity-60"
       >
         {enviando ? 'Entrando…' : 'Entrar'}

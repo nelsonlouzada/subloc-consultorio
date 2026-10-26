@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
+import { usePronto } from '@/lib/usePronto';
 
 const MINIMO = 10;
 
@@ -13,6 +14,7 @@ function Formulario() {
   const token = params.get('token');
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const pronto = usePronto();
 
   if (!token || params.get('error')) {
     return (
@@ -47,7 +49,7 @@ function Formulario() {
 
   const campo = 'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base';
   return (
-    <form onSubmit={salvar} className="space-y-4" noValidate>
+    <form onSubmit={salvar} method="post" className="space-y-4" noValidate>
       <div>
         <label htmlFor="senha" className="mb-1 block text-sm font-medium">
           Nova senha (mínimo de {MINIMO} caracteres)
@@ -63,7 +65,7 @@ function Formulario() {
       <p role="alert" aria-live="polite" className="min-h-5 text-sm text-red-700">
         {erro}
       </p>
-      <button type="submit" disabled={enviando} className="w-full btn btn-primary disabled:opacity-60">
+      <button type="submit" disabled={enviando || !pronto} className="w-full btn btn-primary disabled:opacity-60">
         {enviando ? 'Salvando…' : 'Salvar nova senha'}
       </button>
     </form>
