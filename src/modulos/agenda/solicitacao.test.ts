@@ -8,6 +8,7 @@ vi.mock('@sentry/node', () => ({ captureException: vi.fn() }));
 
 import { instanteLocal } from '@/lib/fuso';
 import { fabrica } from '@/test/fabrica';
+import { concederCredito } from '@/modulos/carteira/carteira';
 import { garantirDocumentosIniciais } from '@/modulos/configuracao/documentos-iniciais';
 import { expirarPrazos } from './expiracao';
 import { criarReserva, type PedidoReserva } from './reserva';
@@ -194,6 +195,23 @@ describe('listar e contar', () => {
       [b, 'aguardando_pagamento'],
     ]);
     expect(lista[0]).toMatchObject({ profissionalStatus: 'aprovado', realizadas: 0, faltas: 0 });
+  });
+});
+
+describe('valor a pagar na lista', () => {
+  it('mostra o que falta pagar depois de abater o crédito, não o valor cheio da reserva', async () => {
+    const { espacoId } = await f.sala();
+    const anf = await f.anfitriao();
+    const prof = await f.profissional();
+    await concederCredito(db, { profissionalId: prof, espacoId, origem: 'ajuste_manual', valorCentavos: 2000 }, agora);
+    const a = await pedir(espacoId, prof, 9, 10, 2);
+    await aprovarReserva(a, anf, {}, agora);
+
+    const [item] = await listarSolicitacoes(espacoId);
+    const cheio = (await reserva(a)).valorCentavos;
+    expect(item.valorCentavos).toBe(cheio);
+    expect(item.aPagarCentavos).toBe(Math.max(0, cheio - 2000));
+    expect(item.aPagarCentavos).toBeLessThan(item.valorCentavos);
   });
 });
 

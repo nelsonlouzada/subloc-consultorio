@@ -134,7 +134,8 @@ export default async function Solicitacoes({ searchParams }: { searchParams: Pro
         {aguardando.map((s) => (
           <article key={s.id} className="card p-5 text-sm">
             <p>
-              <strong>{s.profissionalNome}</strong> · {descreverPeriodo(s.inicio, s.fim)} · {formatarReais(s.valorCentavos)}
+              <strong>{s.profissionalNome}</strong> · {descreverPeriodo(s.inicio, s.fim)} · {formatarReais(s.aPagarCentavos)}
+              {s.aPagarCentavos !== s.valorCentavos && <span className="text-zinc-600"> (reserva de {formatarReais(s.valorCentavos)}, o resto saiu do crédito)</span>}
             </p>
             {s.prazoPagamentoAte && (
               <p className="text-zinc-600">

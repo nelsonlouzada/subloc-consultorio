@@ -91,7 +91,18 @@ export async function listarSolicitacoes(espacoId: string) {
     : [];
   const de = (id: string, s: string) => historico.find((h) => h.profissionalId === id && h.status === s)?.total ?? 0;
 
-  return linhas.map((l) => ({ ...l, realizadas: de(l.profissionalId, 'realizada'), faltas: de(l.profissionalId, 'falta') }));
+  // O que falta pagar de fato: a cobrança aberta já desconta o crédito usado, então pode ser menor que o valor da reserva.
+  const aguardando = linhas.filter((l) => l.status === 'aguardando_pagamento').map((l) => l.id);
+  const abertas = aguardando.length
+    ? await db
+        .select({ reservaId: schema.cobrancaItem.reservaId, valor: schema.cobranca.valorCobradoCentavos })
+        .from(schema.cobrancaItem)
+        .innerJoin(schema.cobranca, eq(schema.cobranca.id, schema.cobrancaItem.cobrancaId))
+        .where(and(inArray(schema.cobrancaItem.reservaId, aguardando), eq(schema.cobranca.status, 'pendente')))
+    : [];
+  const aPagar = (l: { id: string; valorCentavos: number }) => abertas.find((a) => a.reservaId === l.id)?.valor ?? l.valorCentavos;
+
+  return linhas.map((l) => ({ ...l, aPagarCentavos: aPagar(l), realizadas: de(l.profissionalId, 'realizada'), faltas: de(l.profissionalId, 'falta') }));
 }
 
 /** Quantos pedidos esperam a decisão do Anfitrião (alerta do menu e do Início): uma série conta como um pedido. */
@@ -150,9 +161,20 @@ export async function listarSeriesDaFila(espacoId: string) {
   const paraAprovar = dados
     .filter((x) => x.status === 'solicitada')
     .map((x) => ({ ...x, ocorrencias: de(x.id, 'solicitada')?.total ?? 0, valorCentavos: de(x.id, 'solicitada')?.valor ?? 0, prazoAprovacaoAte: de(x.id, 'solicitada')?.prazo ? new Date(de(x.id, 'solicitada')!.prazo!) : null }));
+  // Valor realmente a pagar: soma das cobranças abertas (com desconto do pacote e crédito), uma vez cada.
+  const abertas = await db
+    .select({ serieId: schema.reserva.serieId, cobrancaId: schema.cobranca.id, valor: schema.cobranca.valorCobradoCentavos })
+    .from(schema.cobrancaItem)
+    .innerJoin(schema.cobranca, eq(schema.cobranca.id, schema.cobrancaItem.cobrancaId))
+    .innerJoin(schema.reserva, eq(schema.reserva.id, schema.cobrancaItem.reservaId))
+    .where(and(inArray(schema.reserva.serieId, dados.map((d) => d.id)), eq(schema.cobranca.status, 'pendente')));
+  const aPagarDe = (id: string, padrao: number) => {
+    const doId = new Map(abertas.filter((a) => a.serieId === id).map((a) => [a.cobrancaId, a.valor]));
+    return doId.size ? [...doId.values()].reduce((t, v) => t + v, 0) : padrao;
+  };
   const aguardandoPagamento = dados
     .filter((x) => x.status === 'aprovada' && (de(x.id, 'aguardando_pagamento')?.total ?? 0) > 0)
-    .map((x) => ({ ...x, ocorrencias: de(x.id, 'aguardando_pagamento')!.total, valorCentavos: de(x.id, 'aguardando_pagamento')!.valor, prazoPagamentoAte: de(x.id, 'aguardando_pagamento')!.prazo ? new Date(de(x.id, 'aguardando_pagamento')!.prazo!) : null }));
+    .map((x) => ({ ...x, ocorrencias: de(x.id, 'aguardando_pagamento')!.total, valorCentavos: aPagarDe(x.id, de(x.id, 'aguardando_pagamento')!.valor), prazoPagamentoAte: de(x.id, 'aguardando_pagamento')!.prazo ? new Date(de(x.id, 'aguardando_pagamento')!.prazo!) : null }));
   return { paraAprovar, aguardandoPagamento };
 }
 
