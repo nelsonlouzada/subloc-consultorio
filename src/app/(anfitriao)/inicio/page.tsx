@@ -26,7 +26,7 @@ async function Dia({ titulo, d, espacoId }: { titulo: string; d: DataLocal; espa
     ...reservas.map((r) => ({ id: r.id, inicio: r.inicio, fim: r.fim, texto: `Reserva (${STATUS[r.status] ?? r.status}) · ${r.profissional}` })),
   ].sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white p-4">
+    <section className="card p-5">
       <h2 className="mb-1 font-semibold">
         {titulo} <span className="text-sm font-normal text-zinc-600">({nomeDiaCurto(d)} {String(d.dia).padStart(2, '0')}/{String(d.mes).padStart(2, '0')})</span>
       </h2>
@@ -57,9 +57,9 @@ export default async function Inicio() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Olá, {sessao.user.name.split(' ')[0]}</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Olá, {sessao.user.name.split(' ')[0]}</h1>
 
-      <section aria-label="Pendências" className="rounded-2xl border border-zinc-200 bg-white p-4">
+      <section aria-label="Pendências" className="card p-5">
         <h2 className="mb-1 font-semibold">O que precisa de ação</h2>
         {pendentes + solicitacoes + codigosAEnviar.length + pagamentosExpirando.length > 0 ? (
           <ul className="space-y-1 text-sm">
@@ -108,7 +108,7 @@ export default async function Inicio() {
         <p className="rounded-lg bg-amber-50 p-4 text-amber-900">A sala ainda não foi cadastrada. Rode o seed do espaço.</p>
       )}
 
-      <Link href={`/agenda?data=${formatarDataISO(hoje)}`} className="inline-block rounded-lg bg-zinc-900 px-4 py-2.5 font-medium text-white">
+      <Link href={`/agenda?data=${formatarDataISO(hoje)}`} className="inline-block btn btn-primary">
         Abrir a agenda
       </Link>
     </div>

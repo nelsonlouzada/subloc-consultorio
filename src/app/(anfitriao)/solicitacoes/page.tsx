@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { formatarReais } from '@/lib/dinheiro';
 import { exigirAnfitriao } from '@/lib/sessao';
 import { descreverMomento, descreverPeriodo } from '@/modulos/agenda/calendario';
-import { listarSolicitacoes } from '@/modulos/agenda/solicitacao';
+import { descreverSerie } from '@/modulos/agenda/serie';
+import { listarSeriesDaFila, listarSolicitacoes } from '@/modulos/agenda/solicitacao';
 import { carregarSala } from '@/modulos/configuracao/espaco';
 import { CONSELHOS } from '@/modulos/identidade/opcoes';
 import { aprovarSolicitacaoAction, recusarSolicitacaoAction } from './actions';
@@ -31,10 +32,15 @@ export default async function Solicitacoes({ searchParams }: { searchParams: Pro
   const todas = await listarSolicitacoes(sala.espaco.id);
   const paraAprovar = todas.filter((s) => s.status === 'solicitada');
   const aguardando = todas.filter((s) => s.status === 'aguardando_pagamento');
+  const series = await listarSeriesDaFila(sala.espaco.id);
+  const totalParaAprovar = paraAprovar.length + series.paraAprovar.length;
+  const totalAguardando = aguardando.length + series.aguardandoPagamento.length;
+  const descricaoDe = (x: { diasSemana: number[]; frequencia: 'semanal' | 'quinzenal'; horaInicio: number | null; horaFim: number | null; dataInicio: string; dataFim: string }) =>
+    descreverSerie({ diasSemana: x.diasSemana, frequencia: x.frequencia, horaInicio: x.horaInicio, horaFim: x.horaFim, dataInicio: x.dataInicio, dataFim: x.dataFim });
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold">Solicitações</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Solicitações</h1>
 
       {aviso && AVISOS[aviso] && (
         <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-900">
@@ -48,12 +54,12 @@ export default async function Solicitacoes({ searchParams }: { searchParams: Pro
       )}
 
       <section aria-label="Para aprovar" className="space-y-3">
-        <h2 className="text-lg font-semibold">Para aprovar ({paraAprovar.length})</h2>
-        {paraAprovar.length === 0 && <p className="text-sm text-zinc-600">Nenhum pedido esperando aprovação.</p>}
+        <h2 className="text-lg font-semibold">Para aprovar ({totalParaAprovar})</h2>
+        {totalParaAprovar === 0 && <p className="text-sm text-zinc-600">Nenhum pedido esperando aprovação.</p>}
         {paraAprovar.map((s) => {
           const pendente = s.profissionalStatus === 'pendente';
           return (
-            <article key={s.id} className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4">
+            <article key={s.id} className="space-y-3 card p-5">
               <div className="flex flex-wrap items-center gap-2">
                 <strong>{s.profissionalNome}</strong>
                 <Link href={`/profissionais/${encodeURIComponent(s.profissionalId)}`} className="text-sm underline">
@@ -79,7 +85,7 @@ export default async function Solicitacoes({ searchParams }: { searchParams: Pro
                 <form action={aprovarSolicitacaoAction}>
                   <input type="hidden" name="id" value={s.id} />
                   {pendente && <input type="hidden" name="aprovarCadastro" value="on" />}
-                  <button type="submit" className={`${botao} bg-zinc-900 text-white`}>
+                  <button type="submit" className={`${botao} btn-primary`}>
                     {pendente ? 'Aprovar cadastro e pedido' : 'Aprovar'}
                   </button>
                 </form>
@@ -91,7 +97,7 @@ export default async function Solicitacoes({ searchParams }: { searchParams: Pro
                     </label>
                     <input id={`motivo-${s.id}`} name="motivo" maxLength={300} className="rounded-lg border border-zinc-300 px-3 py-2 text-sm" />
                   </div>
-                  <button type="submit" className={`${botao} border border-red-700 text-red-800`}>
+                  <button type="submit" className={`${botao} btn-destructive`}>
                     Recusar
                   </button>
                 </form>
@@ -99,13 +105,34 @@ export default async function Solicitacoes({ searchParams }: { searchParams: Pro
             </article>
           );
         })}
+        {series.paraAprovar.map((x) => (
+          <article key={x.id} className="space-y-2 rounded-2xl border border-zinc-200 bg-white p-5 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-900">Série</span>
+              <strong>{x.profissionalNome}</strong>
+              {x.profissionalStatus === 'pendente' && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">Cadastro pendente</span>}
+            </div>
+            <p className="text-lg font-medium">{descricaoDe(x)}</p>
+            <p className="text-zinc-700">
+              {x.ocorrencias} {x.ocorrencias === 1 ? 'data' : 'datas'} · {formatarReais(x.valorCentavos)} · {x.formaPagamento === 'pacote_mes' ? 'pacote do mês' : 'por data'}
+            </p>
+            {x.prazoAprovacaoAte && (
+              <p className="text-zinc-600">
+                Responder até <strong>{descreverMomento(x.prazoAprovacaoAte)}</strong> (depois disso os horários são liberados)
+              </p>
+            )}
+            <Link href={`/series-da-sala/${x.id}`} className="inline-block rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white">
+              Abrir a série e decidir
+            </Link>
+          </article>
+        ))}
       </section>
 
       <section aria-label="Aguardando pagamento" className="space-y-3">
-        <h2 className="text-lg font-semibold">Aguardando pagamento ({aguardando.length})</h2>
-        {aguardando.length === 0 && <p className="text-sm text-zinc-600">Nenhum pedido aprovado esperando pagamento.</p>}
+        <h2 className="text-lg font-semibold">Aguardando pagamento ({totalAguardando})</h2>
+        {totalAguardando === 0 && <p className="text-sm text-zinc-600">Nenhum pedido aprovado esperando pagamento.</p>}
         {aguardando.map((s) => (
-          <article key={s.id} className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm">
+          <article key={s.id} className="card p-5 text-sm">
             <p>
               <strong>{s.profissionalNome}</strong> · {descreverPeriodo(s.inicio, s.fim)} · {formatarReais(s.valorCentavos)}
             </p>
@@ -114,8 +141,28 @@ export default async function Solicitacoes({ searchParams }: { searchParams: Pro
                 Pagar até <strong>{descreverMomento(s.prazoPagamentoAte)}</strong>. Sem pagamento até lá, o horário é liberado.
               </p>
             )}
-            <Link href={`/reservas/${s.id}`} className="mt-2 inline-block rounded-lg border border-zinc-900 px-3 py-1.5 font-medium">
+            <Link href={`/reservas/${s.id}`} className="mt-2 btn btn-tinted btn-sm">
               Abrir reserva e marcar pagamento
+            </Link>
+          </article>
+        ))}
+        {series.aguardandoPagamento.map((x) => (
+          <article key={x.id} className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm">
+            <p>
+              <span className="mr-2 rounded-full bg-sky-100 px-2 py-0.5 text-xs text-sky-900">Série</span>
+              <strong>{x.profissionalNome}</strong> · {descricaoDe(x)}
+            </p>
+            <p className="text-zinc-600">
+              {x.ocorrencias} {x.ocorrencias === 1 ? 'data esperando' : 'datas esperando'} pagamento · {formatarReais(x.valorCentavos)}
+              {x.prazoPagamentoAte && (
+                <>
+                  {' '}
+                  · pagar até <strong>{descreverMomento(x.prazoPagamentoAte)}</strong>
+                </>
+              )}
+            </p>
+            <Link href={`/series-da-sala/${x.id}`} className="mt-2 inline-block rounded-lg border border-zinc-900 bg-white px-3 py-1.5 hover:bg-zinc-900 hover:text-white">
+              Abrir a série e marcar pagamento
             </Link>
           </article>
         ))}

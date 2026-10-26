@@ -39,9 +39,9 @@ function Formulario() {
   }
 
   return (
-    <form onSubmit={entrar} className="space-y-4" noValidate>
+    <form onSubmit={entrar} className="space-y-5" noValidate>
       <div>
-        <label htmlFor="email" className="mb-1 block text-sm font-medium">
+        <label htmlFor="email" className="mb-1.5 block text-sm font-medium">
           E-mail
         </label>
         <input
@@ -54,7 +54,7 @@ function Formulario() {
         />
       </div>
       <div>
-        <label htmlFor="senha" className="mb-1 block text-sm font-medium">
+        <label htmlFor="senha" className="mb-1.5 block text-sm font-medium">
           Senha
         </label>
         <input
@@ -82,7 +82,7 @@ function Formulario() {
       <button
         type="submit"
         disabled={enviando}
-        className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 font-medium text-white disabled:opacity-60"
+        className="w-full btn btn-primary disabled:opacity-60"
       >
         {enviando ? 'Entrando…' : 'Entrar'}
       </button>
@@ -93,9 +93,9 @@ function Formulario() {
 export default function Login() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 text-zinc-900">
-      <div className="w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h1 className="mb-1 text-xl font-semibold">Entrar</h1>
-        <p className="mb-6 text-sm text-zinc-600">Acesso ao painel da sala.</p>
+      <div className="w-full max-w-sm card p-8">
+        <h1 className="mb-1 text-3xl font-bold tracking-tight">Entrar</h1>
+        <p className="mb-8 text-zinc-600">Acesso ao painel da sala.</p>
         <Suspense>
           <Formulario />
         </Suspense>

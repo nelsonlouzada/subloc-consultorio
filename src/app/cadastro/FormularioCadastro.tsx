@@ -72,7 +72,7 @@ export default function FormularioCadastro({ contrato, versao }: { contrato: str
           Seu cadastro será analisado pelos responsáveis pela sala. Você já poderá ver a agenda e pedir uma reserva
           enquanto isso.
         </p>
-        <Link href="/login" className="inline-block rounded-lg bg-zinc-900 px-4 py-2.5 font-medium text-white">
+        <Link href="/login" className="inline-block btn btn-primary">
           Ir para o login
         </Link>
       </div>
@@ -86,7 +86,7 @@ export default function FormularioCadastro({ contrato, versao }: { contrato: str
           <li
             key={nome}
             aria-current={i === passo ? 'step' : undefined}
-            className={`flex-1 rounded-full px-2 py-1 text-center ${i === passo ? 'bg-zinc-900 text-white' : 'bg-zinc-200 text-zinc-700'}`}
+            className={`flex-1 rounded-full px-2 py-1 text-center ${i === passo ? 'bg-accent text-white' : 'bg-zinc-200 text-zinc-700'}`}
           >
             {i + 1}. {nome}
           </li>
@@ -208,11 +208,11 @@ export default function FormularioCadastro({ contrato, versao }: { contrato: str
           </button>
         )}
         {passo < PASSOS.length - 1 ? (
-          <button type="button" onClick={avancar} className="ml-auto rounded-lg bg-zinc-900 px-4 py-2.5 font-medium text-white">
+          <button type="button" onClick={avancar} className="ml-auto btn btn-primary">
             Próximo
           </button>
         ) : (
-          <button type="submit" disabled={enviando} className="ml-auto rounded-lg bg-zinc-900 px-4 py-2.5 font-medium text-white disabled:opacity-60">
+          <button type="submit" disabled={enviando} className="ml-auto btn btn-primary disabled:opacity-60">
             {enviando ? 'Enviando…' : 'Concluir cadastro'}
           </button>
         )}

@@ -14,7 +14,7 @@ export default async function Cadastro() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-8 text-zinc-900">
-      <div className="w-full max-w-lg rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <div className="w-full max-w-lg card p-8">
         <h1 className="mb-1 text-xl font-semibold">Cadastro de profissional</h1>
         <p className="mb-6 text-sm text-zinc-600">
           Para reservar a sala por hora, turno ou dia. Já tem conta?{' '}

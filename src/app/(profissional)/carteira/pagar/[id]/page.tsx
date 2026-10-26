@@ -30,7 +30,7 @@ export default async function PagarCredito({ params }: { params: Promise<{ id: s
       <Link href="/carteira" className="text-sm underline">
         ← Carteira
       </Link>
-      <h1 className="text-2xl font-semibold">{c.pacote}</h1>
+      <h1 className="text-3xl font-bold tracking-tight">{c.pacote}</h1>
       <p className="text-sm text-zinc-700">
         Você paga {formatarReais(cobranca.valorCobradoCentavos)} e recebe <strong>{formatarReais(c.credito)}</strong> em crédito.
       </p>
@@ -52,7 +52,7 @@ export default async function PagarCredito({ params }: { params: Promise<{ id: s
           <p className="text-xs">Esta página não atualiza sozinha: depois de pagar, volte à Carteira.</p>
         </section>
       ) : (
-        <p className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700">Esta cobrança não está mais aberta.</p>
+        <p className="card p-5 text-sm text-zinc-700">Esta cobrança não está mais aberta.</p>
       )}
     </div>
   );

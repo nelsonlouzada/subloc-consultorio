@@ -27,6 +27,7 @@ const ERROS: Record<string, string> = {
   credito_devolvido: 'O crédito que abatia este pedido já voltou para a carteira e o saldo atual não cobre. Resolva com a pessoa por fora antes de marcar.',
   nao_iniciada: 'A reserva ainda não começou: só dá para registrar falta depois do início.',
   iniciada: 'A reserva já começou e não pode mais ser cancelada.',
+  pacote: 'Esta data está num pacote do mês ainda não pago: não dá para cancelá-la sozinha. Cancele a série inteira ou aguarde o prazo.',
 };
 const NOME_ACAO: Record<string, string> = {
   reserva_solicitada: 'Pedido enviado',
@@ -67,7 +68,7 @@ export default async function ReservaDoAnfitriao({
   const podeMarcarPago = r.status === 'aguardando_pagamento' || (r.status === 'expirada' && cobranca?.status === 'expirada');
   const comecou = r.inicio <= new Date();
   const podeRegistrarFalta = (r.status === 'confirmada' || r.status === 'realizada') && comecou;
-  const podeCancelar = (r.status === 'aguardando_pagamento' || r.status === 'confirmada') && r.inicio > new Date();
+  const podeCancelar = (r.status === 'aprovada' || r.status === 'aguardando_pagamento' || r.status === 'confirmada') && r.inicio > new Date();
 
   return (
     <div className="space-y-5">
@@ -75,9 +76,19 @@ export default async function ReservaDoAnfitriao({
         ← Solicitações
       </Link>
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold">{descreverPeriodo(r.inicio, r.fim)}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{descreverPeriodo(r.inicio, r.fim)}</h1>
         <span className={`rounded-full px-2 py-0.5 text-xs ${s.cor}`}>{s.nome}</span>
       </div>
+
+      {r.serieId && (
+        <p className="text-sm">
+          Esta reserva faz parte de uma série.{' '}
+          <Link href={`/series-da-sala/${r.serieId}`} className="underline">
+            Ver a série
+          </Link>{' '}
+          (aprovação, cobranças e cancelamento da série inteira).
+        </p>
+      )}
 
       {aviso && AVISOS[aviso] && (
         <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-900">
@@ -90,7 +101,7 @@ export default async function ReservaDoAnfitriao({
         </p>
       )}
 
-      <section className="space-y-1 rounded-2xl border border-zinc-200 bg-white p-4 text-sm">
+      <section className="space-y-1 card p-5 text-sm">
         <p>
           <span className="text-zinc-500">Profissional:</span>{' '}
           <Link href={`/profissionais/${encodeURIComponent(r.profissionalId)}`} className="underline">
@@ -118,7 +129,7 @@ export default async function ReservaDoAnfitriao({
       </section>
 
       {cobranca && (
-        <section className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 text-sm">
+        <section className="space-y-3 card p-5 text-sm">
           <h2 className="font-semibold">Pagamento</h2>
           <p>
             {formatarReais(cobranca.valorCobradoCentavos)} · cobrança {cobranca.status}
@@ -140,7 +151,7 @@ export default async function ReservaDoAnfitriao({
           {podeMarcarPago && (
             <form action={marcarPagoAction}>
               <input type="hidden" name="id" value={r.id} />
-              <button type="submit" className={`${botao} bg-zinc-900 text-white`}>
+              <button type="submit" className={`${botao} btn-primary`}>
                 Marcar pagamento como recebido
               </button>
               <p className="mt-1 text-xs text-zinc-600">Confira o Pix no seu banco antes de marcar. A reserva é confirmada na hora.</p>
@@ -150,7 +161,7 @@ export default async function ReservaDoAnfitriao({
       )}
 
       {r.status === 'confirmada' && (
-        <section className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 text-sm">
+        <section className="space-y-3 card p-5 text-sm">
           <h2 className="font-semibold">Código de acesso</h2>
           <p className="text-zinc-700">
             {r.codigoAcessoEnviadoEm
@@ -165,7 +176,7 @@ export default async function ReservaDoAnfitriao({
               </label>
               <input id="codigo" name="codigo" required autoComplete="off" maxLength={20} className="rounded-lg border border-zinc-300 px-3 py-2" />
             </div>
-            <button type="submit" className={`${botao} bg-zinc-900 text-white`}>
+            <button type="submit" className={`${botao} btn-primary`}>
               {r.codigoAcessoEnviadoEm ? 'Reenviar código' : 'Enviar código'}
             </button>
           </form>
@@ -188,7 +199,7 @@ export default async function ReservaDoAnfitriao({
               </label>
               <input id="motivo" name="motivo" maxLength={500} autoComplete="off" className="w-full rounded-lg border border-zinc-300 px-3 py-2" />
             </div>
-            <button type="submit" className={`${botao} border border-red-700 bg-white text-red-800 hover:bg-red-700 hover:text-white`}>
+            <button type="submit" className={`${botao} btn-destructive`}>
               Cancelar esta reserva
             </button>
           </form>
@@ -196,7 +207,7 @@ export default async function ReservaDoAnfitriao({
       )}
 
       {(podeRegistrarFalta || r.status === 'falta') && (
-        <section className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 text-sm">
+        <section className="space-y-3 card p-5 text-sm">
           <h2 className="font-semibold">Comparecimento</h2>
           {r.status === 'falta' ? (
             <form action={desfazerFaltaAction} className="space-y-2">
@@ -210,7 +221,7 @@ export default async function ReservaDoAnfitriao({
             <form action={registrarFaltaAction} className="space-y-2">
               <input type="hidden" name="id" value={r.id} />
               <p className="text-zinc-700">Se a pessoa não apareceu, registre a falta. Não gera crédito, e a pessoa é avisada por e-mail.</p>
-              <button type="submit" className={`${botao} border border-red-700 bg-white text-red-800 hover:bg-red-700 hover:text-white`}>
+              <button type="submit" className={`${botao} btn-destructive`}>
                 Registrar falta
               </button>
             </form>
@@ -218,7 +229,7 @@ export default async function ReservaDoAnfitriao({
         </section>
       )}
 
-      <section aria-label="Histórico" className="rounded-2xl border border-zinc-200 bg-white p-4">
+      <section aria-label="Histórico" className="card p-5">
         <h2 className="mb-2 font-semibold">Histórico</h2>
         {historico.length === 0 ? (
           <p className="text-sm text-zinc-600">Sem registros.</p>

@@ -60,7 +60,7 @@ export default async function DetalheProfissional({
       <Link href="/profissionais" className="text-sm underline">
         ← Voltar à lista
       </Link>
-      <h1 className="text-2xl font-semibold">{p.nome}</h1>
+      <h1 className="text-3xl font-bold tracking-tight">{p.nome}</h1>
 
       {aviso && ACOES[aviso] && (
         <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-900">
@@ -78,7 +78,7 @@ export default async function DetalheProfissional({
         </p>
       )}
 
-      <section className="space-y-2 rounded-2xl border border-zinc-200 bg-white p-4 text-sm">
+      <section className="space-y-2 card p-5 text-sm">
         <p>
           <span className="text-zinc-500">Estado:</span> <strong>{STATUS_PROFISSIONAL[p.status]}</strong>
           {p.motivoAvaliacao ? ` · ${p.motivoAvaliacao}` : ''}
@@ -112,13 +112,13 @@ export default async function DetalheProfissional({
         </p>
       </section>
 
-      <section className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4">
+      <section className="space-y-4 card p-5">
         <h2 className="font-semibold">Decisão</h2>
 
         {(p.status === 'pendente' || p.status === 'recusado') && (
           <form action={aprovarAction}>
             <input type="hidden" name="id" value={p.id} />
-            <button type="submit" className={`${botao} bg-zinc-900 text-white`}>
+            <button type="submit" className={`${botao} btn-primary`}>
               {p.status === 'recusado' ? 'Reconsiderar e aprovar' : 'Aprovar cadastro'}
             </button>
           </form>
@@ -131,7 +131,7 @@ export default async function DetalheProfissional({
               Motivo da recusa <span className="font-normal text-zinc-500">(opcional, vai no e-mail)</span>
             </label>
             <input id="motivo-recusa" name="motivo" maxLength={300} className="w-full rounded-lg border border-zinc-300 px-3 py-2" />
-            <button type="submit" className={`${botao} border border-red-700 text-red-800`}>
+            <button type="submit" className={`${botao} btn-destructive`}>
               Recusar cadastro
             </button>
             <p className="text-xs text-zinc-600">Recusar também recusa os pedidos de reserva em aberto e libera os horários.</p>
@@ -145,7 +145,7 @@ export default async function DetalheProfissional({
               Motivo do bloqueio <span className="font-normal text-zinc-500">(opcional, só fica no histórico)</span>
             </label>
             <input id="motivo-bloqueio" name="motivo" maxLength={300} className="w-full rounded-lg border border-zinc-300 px-3 py-2" />
-            <button type="submit" className={`${botao} border border-red-700 text-red-800`}>
+            <button type="submit" className={`${botao} btn-destructive`}>
               Bloquear profissional
             </button>
             <p className="text-xs text-zinc-600">Bloqueado não faz novas reservas. As reservas futuras ficam para você decidir.</p>
@@ -155,14 +155,14 @@ export default async function DetalheProfissional({
         {p.status === 'bloqueado' && (
           <form action={desbloquearAction}>
             <input type="hidden" name="id" value={p.id} />
-            <button type="submit" className={`${botao} bg-zinc-900 text-white`}>
+            <button type="submit" className={`${botao} btn-primary`}>
               Desbloquear
             </button>
           </form>
         )}
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4 text-sm">
+      <section className="space-y-3 card p-5 text-sm">
         <h2 className="font-semibold">Carteira</h2>
         <p>
           Saldo de crédito: <strong>{formatarReais(saldo)}</strong>
@@ -181,14 +181,14 @@ export default async function DetalheProfissional({
             </label>
             <input id="motivo-credito" name="motivo" required maxLength={300} autoComplete="off" className="w-full rounded-lg border border-zinc-300 px-3 py-2" />
           </div>
-          <button type="submit" className={`${botao} bg-zinc-900 text-white`}>
+          <button type="submit" className={`${botao} btn-primary`}>
             Conceder crédito
           </button>
         </form>
         <p className="text-xs text-zinc-600">O crédito é usado automaticamente nos próximos pedidos da pessoa e vence como os demais.</p>
       </section>
 
-      <section aria-label="Histórico" className="rounded-2xl border border-zinc-200 bg-white p-4">
+      <section aria-label="Histórico" className="card p-5">
         <h2 className="mb-2 font-semibold">Histórico</h2>
         {historico.length === 0 ? (
           <p className="text-sm text-zinc-600">Sem registros.</p>

@@ -38,7 +38,7 @@ export default async function Resumo({ searchParams }: { searchParams: Promise<P
       <Link href={voltar} className="text-sm underline">
         ← Escolher outro horário
       </Link>
-      <h1 className="text-2xl font-semibold">Resumo do pedido</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Resumo do pedido</h1>
 
       {busca.erro === 'termo' && (
         <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">
@@ -46,12 +46,12 @@ export default async function Resumo({ searchParams }: { searchParams: Promise<P
         </p>
       )}
 
-      <section className="space-y-2 rounded-2xl border border-zinc-200 bg-white p-4">
+      <section className="space-y-2 card p-5">
         <p className="text-lg font-medium">{descreverPeriodo(pedido.inicio, pedido.fim)}</p>
         <p className="text-sm text-zinc-600">
           {UNIDADE[pedido.unidade]} · {preco.horas} {preco.horas === 1 ? 'hora' : 'horas'}
         </p>
-        <p className="text-2xl font-semibold">{formatarReais(preco.valorCentavos)}</p>
+        <p className="text-3xl font-bold tracking-tight">{formatarReais(preco.valorCentavos)}</p>
         <details className="text-sm text-zinc-700">
           <summary className="cursor-pointer">Como o valor foi calculado</summary>
           <ul className="mt-2 space-y-1">
@@ -75,7 +75,7 @@ export default async function Resumo({ searchParams }: { searchParams: Promise<P
         </details>
       </section>
 
-      <section className="space-y-2 rounded-2xl border border-zinc-200 bg-white p-4 text-sm">
+      <section className="space-y-2 card p-5 text-sm">
         <h2 className="font-semibold">O que acontece depois</h2>
         <ol className="list-decimal space-y-1 pl-5 text-zinc-700">
           <li>O horário fica retido para você assim que você enviar.</li>
@@ -85,7 +85,7 @@ export default async function Resumo({ searchParams }: { searchParams: Promise<P
         </ol>
       </section>
 
-      <form action={enviarPedidoAction} className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4">
+      <form action={enviarPedidoAction} className="space-y-4 card p-5">
         <input type="hidden" name="data" value={busca.data ?? ''} />
         <input type="hidden" name="unidade" value={busca.unidade ?? ''} />
         <input type="hidden" name="de" value={busca.de ?? ''} />
@@ -122,7 +122,7 @@ export default async function Resumo({ searchParams }: { searchParams: Promise<P
           </label>
         </div>
 
-        <button type="submit" className="w-full rounded-lg bg-zinc-900 px-4 py-3 font-medium text-white">
+        <button type="submit" className="w-full btn btn-primary py-3">
           Enviar pedido
         </button>
       </form>

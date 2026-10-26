@@ -19,7 +19,7 @@ export default async function MinhasReservas({ searchParams }: { searchParams: P
   const todas = await listarReservasDoProfissional(sessao.user.id);
   const agora = new Date();
 
-  const pendentes = todas.filter((r) => r.status === 'solicitada' || r.status === 'aguardando_pagamento');
+  const pendentes = todas.filter((r) => (r.status === 'solicitada' || r.status === 'aprovada' || r.status === 'aguardando_pagamento') && r.fim > agora);
   const proximas = todas.filter((r) => r.status === 'confirmada' && r.fim > agora).sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
   const passadas = todas.filter((r) => !pendentes.includes(r) && !proximas.includes(r));
   const grupos = { pendentes, proximas, passadas };
@@ -31,7 +31,7 @@ export default async function MinhasReservas({ searchParams }: { searchParams: P
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-semibold">Minhas reservas</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Minhas reservas</h1>
 
       <nav aria-label="Filtrar reservas" className="flex gap-2 text-sm">
         {ABAS.map((a) => (
@@ -39,7 +39,7 @@ export default async function MinhasReservas({ searchParams }: { searchParams: P
             key={a.chave}
             href={`/minhas-reservas?aba=${a.chave}`}
             aria-current={a.chave === atual ? 'page' : undefined}
-            className={`rounded-lg border px-3 py-1.5 ${a.chave === atual ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-300 bg-white'}`}
+            className={`pill`}
           >
             {a.nome} ({grupos[a.chave].length})
           </Link>
@@ -47,7 +47,7 @@ export default async function MinhasReservas({ searchParams }: { searchParams: P
       </nav>
 
       {lista.length === 0 ? (
-        <p className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600">
+        <p className="card p-5 text-sm text-zinc-600">
           Nada por aqui.{' '}
           <Link href="/reservar" className="underline">
             Reservar a sala
@@ -59,7 +59,7 @@ export default async function MinhasReservas({ searchParams }: { searchParams: P
             const s = ROTULO_STATUS[r.status] ?? { nome: r.status, cor: 'bg-zinc-100 text-zinc-700' };
             return (
               <li key={r.id}>
-                <Link href={`/minhas-reservas/${r.id}`} className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200 bg-white p-3 text-sm hover:border-zinc-400">
+                <Link href={`/minhas-reservas/${r.id}`} className="card-link flex flex-wrap items-center gap-2 p-4 text-sm">
                   <span className="font-medium">{descreverPeriodo(r.inicio, r.fim)}</span>
                   <span className="text-zinc-600">{formatarReais(r.valorCentavos)}</span>
                   <span className={`ml-auto rounded-full px-2 py-0.5 text-xs ${s.cor}`}>{s.nome}</span>

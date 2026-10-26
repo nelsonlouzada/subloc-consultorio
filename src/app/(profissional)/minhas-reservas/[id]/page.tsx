@@ -17,6 +17,7 @@ const AVISOS: Record<string, string> = {
 };
 const ERROS: Record<string, string> = {
   iniciada: 'A reserva já começou e não pode mais ser cancelada.',
+  pacote: 'Esta data está num pacote do mês ainda não pago. Pague o pacote, aguarde o prazo ou cancele a série inteira.',
   estado: 'O estado desta reserva mudou. Confira abaixo.',
 };
 const UNIDADE = { hora: 'por hora', turno: 'turno', dia: 'dia inteiro' } as const;
@@ -57,12 +58,31 @@ export default async function DetalheDaReserva({
         ← Minhas reservas
       </Link>
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold">{descreverPeriodo(r.inicio, r.fim)}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{descreverPeriodo(r.inicio, r.fim)}</h1>
         <span className={`rounded-full px-2 py-0.5 text-xs ${s.cor}`}>{s.nome}</span>
       </div>
       <p className="text-sm text-zinc-700">
         {UNIDADE[r.unidade]} · {formatarReais(r.valorCentavos)}
       </p>
+
+      {r.serieId && (
+        <p className="text-sm">
+          Esta reserva faz parte de uma série.{' '}
+          <Link href={`/series/${r.serieId}`} className="underline">
+            Ver a série
+          </Link>
+        </p>
+      )}
+      {r.status === 'aprovada' && (
+        <p className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950">
+          Série aprovada: o horário está reservado para você. O link de pagamento desta data chega por e-mail alguns dias antes.
+        </p>
+      )}
+      {previa.emPacote && (
+        <p className="rounded-2xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-950">
+          Esta data está num pacote do mês ainda não pago, então não dá para cancelá-la sozinha. Pague o pacote, aguarde o prazo ou cancele a série inteira.
+        </p>
+      )}
 
       {aviso && AVISOS[aviso] && (
         <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-900">
@@ -140,10 +160,10 @@ export default async function DetalheDaReserva({
       )}
 
       {r.status === 'recusada' && r.motivoRecusa && (
-        <p className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm">Motivo informado: {r.motivoRecusa}</p>
+        <p className="card p-5 text-sm">Motivo informado: {r.motivoRecusa}</p>
       )}
       {r.status === 'cancelada' && (
-        <p className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700">
+        <p className="card p-5 text-sm text-zinc-700">
           {r.canceladaPor === r.profissionalId ? 'Você cancelou esta reserva e o horário foi liberado.' : 'Esta reserva foi cancelada pelos responsáveis e o horário foi liberado.'}
           {r.creditoGeradoCentavos
             ? ` ${formatarReais(r.creditoGeradoCentavos)} viraram crédito na sua carteira.`
@@ -153,7 +173,7 @@ export default async function DetalheDaReserva({
         </p>
       )}
       {r.status === 'expirada' && (
-        <p className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700">
+        <p className="card p-5 text-sm text-zinc-700">
           Este pedido expirou e o horário foi liberado. Se você já pagou, fale com os responsáveis pela sala.
         </p>
       )}
@@ -179,14 +199,14 @@ export default async function DetalheDaReserva({
           <div className="flex flex-wrap gap-2">
             <form action={cancelarMinhaReservaAction}>
               <input type="hidden" name="id" value={r.id} />
-              <button type="submit" className="rounded-lg border border-red-700 bg-white px-4 py-2.5 font-medium text-red-800 hover:bg-red-700 hover:text-white">
+              <button type="submit" className="btn btn-destructive">
                 {r.status === 'solicitada' ? 'Retirar o pedido' : 'Confirmar o cancelamento'}
               </button>
             </form>
             <form action={cancelarMinhaReservaAction}>
               <input type="hidden" name="id" value={r.id} />
               <input type="hidden" name="remarcar" value="1" />
-              <button type="submit" className="rounded-lg border border-zinc-900 bg-white px-4 py-2.5 font-medium hover:bg-zinc-900 hover:text-white">
+              <button type="submit" className="btn btn-tinted">
                 Cancelar e escolher outro horário
               </button>
             </form>
@@ -195,7 +215,7 @@ export default async function DetalheDaReserva({
         </section>
       )}
 
-      <section aria-label="Linha do tempo" className="rounded-2xl border border-zinc-200 bg-white p-4">
+      <section aria-label="Linha do tempo" className="card p-5">
         <h2 className="mb-2 font-semibold">Linha do tempo</h2>
         <ol className="space-y-1 text-sm">
           {eventos.map((e, i) => (

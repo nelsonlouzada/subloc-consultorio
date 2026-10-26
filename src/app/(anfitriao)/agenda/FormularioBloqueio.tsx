@@ -22,7 +22,7 @@ const horas = (de: number, ate: number) =>
 
 export default function FormularioBloqueio({ data, abre, fecha }: { data: string; abre: number; fecha: number }) {
   return (
-    <form action={criarBloqueioAction} className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-4">
+    <form action={criarBloqueioAction} className="space-y-4 card p-5">
       <h2 className="text-lg font-semibold">Novo bloqueio</h2>
 
       <fieldset>
@@ -103,7 +103,7 @@ export default function FormularioBloqueio({ data, abre, fecha }: { data: string
         </div>
       </div>
 
-      <button type="submit" className="rounded-lg bg-zinc-900 px-4 py-2.5 font-medium text-white">
+      <button type="submit" className="btn btn-primary">
         Criar bloqueio
       </button>
     </form>

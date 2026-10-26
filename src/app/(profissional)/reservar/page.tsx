@@ -15,6 +15,7 @@ type Busca = { data?: string; modo?: string; de?: string; aviso?: string; erro?:
 
 const STATUS: Record<string, { nome: string; cor: string }> = {
   solicitada: { nome: 'Aguardando aprovação', cor: 'bg-amber-100 text-amber-900' },
+  aprovada: { nome: 'Aprovada, pagamento em breve', cor: 'bg-sky-100 text-sky-900' },
   aguardando_pagamento: { nome: 'Aprovada, aguardando pagamento', cor: 'bg-orange-100 text-orange-900' },
   confirmada: { nome: 'Confirmada', cor: 'bg-green-100 text-green-900' },
   realizada: { nome: 'Realizada', cor: 'bg-zinc-100 text-zinc-700' },
@@ -35,8 +36,8 @@ const hh = (h: number) => `${String(h).padStart(2, '0')}:00`;
 const linkReservar = (d: DataLocal, modo: string, extra = '') => `/reservar?data=${formatarDataISO(d)}&modo=${modo}${extra}`;
 const linkResumo = (d: DataLocal, params: string) => `/reservar/resumo?data=${formatarDataISO(d)}&${params}`;
 
-const botaoOk = 'rounded-lg border border-zinc-900 bg-white px-3 py-2 text-sm hover:bg-zinc-900 hover:text-white';
-const botaoOff = 'cursor-not-allowed rounded-lg border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm text-zinc-400';
+const botaoOk = 'btn btn-tinted btn-sm';
+const botaoOff = 'btn btn-sm cursor-not-allowed bg-zinc-100 text-zinc-500 opacity-70';
 
 export default async function Reservar({ searchParams }: { searchParams: Promise<Busca> }) {
   const { sessao, profissional } = await exigirProfissional();
@@ -56,7 +57,14 @@ export default async function Reservar({ searchParams }: { searchParams: Promise
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Reservar a sala</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Reservar a sala</h1>
+      <p className="text-sm text-zinc-700">
+        Atende no mesmo horário toda semana?{' '}
+        <Link href="/reservar/serie" className="font-medium underline">
+          Reserve um horário fixo (série)
+        </Link>
+        .
+      </p>
 
       {busca.aviso === 'pedido_enviado' && (
         <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-900">
@@ -77,7 +85,7 @@ export default async function Reservar({ searchParams }: { searchParams: Promise
       {!sala ? (
         <p className="rounded-lg bg-amber-50 p-4 text-amber-900">A sala ainda não está configurada.</p>
       ) : !podePedir ? (
-        <p className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700">
+        <p className="card p-5 text-sm text-zinc-700">
           No momento não é possível fazer novas reservas com este cadastro.
         </p>
       ) : (
@@ -100,7 +108,7 @@ export default async function Reservar({ searchParams }: { searchParams: Promise
                   const passado = iso < formatarDataISO(hoje);
                   const aberto = sala.regras.diasFuncionamento.includes(semana.indexOf(d) + 1);
                   const livre = !passado && aberto;
-                  const classe = `block rounded-lg border px-1 py-2 ${atual ? 'border-zinc-900 bg-zinc-900 text-white' : livre ? 'border-zinc-300 bg-white' : 'border-zinc-200 bg-zinc-100 text-zinc-400'}`;
+                  const classe = `block rounded-xl border px-1 py-2.5 text-center ${atual ? 'border-accent bg-accent text-white shadow-sm' : livre ? 'border-zinc-200 bg-white hover:border-accent hover:text-accent' : 'border-transparent bg-zinc-100 text-zinc-500'}`;
                   return (
                     <li key={iso}>
                       {livre ? (
@@ -124,13 +132,13 @@ export default async function Reservar({ searchParams }: { searchParams: Promise
 
             <nav aria-label="Como reservar" className="flex gap-2 text-sm">
               {MODOS.map((m) => (
-                <Link key={m.chave} href={linkReservar(data, m.chave)} aria-current={m.chave === modo ? 'page' : undefined} className={`rounded-lg border px-3 py-1.5 ${m.chave === modo ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-300 bg-white'}`}>
+                <Link key={m.chave} href={linkReservar(data, m.chave)} aria-current={m.chave === modo ? 'page' : undefined} className="pill">
                   {m.nome}
                 </Link>
               ))}
             </nav>
 
-            <section aria-label="Horários" className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <section aria-label="Horários" className="card p-5">
               {!opcoes.aberto ? (
                 <p className="text-sm text-zinc-600">A sala não abre neste dia.</p>
               ) : modo === 'turno' ? (
@@ -179,7 +187,7 @@ export default async function Reservar({ searchParams }: { searchParams: Promise
                       {opcoes.horas.map(({ hora, motivo }) => (
                         <li key={hora}>
                           {motivo === null ? (
-                            <Link href={linkReservar(data, 'hora', `&de=${hora}`)} aria-current={de === hora ? 'true' : undefined} className={de === hora ? 'rounded-lg border border-zinc-900 bg-zinc-900 px-3 py-2 text-sm text-white' : botaoOk}>
+                            <Link href={linkReservar(data, 'hora', `&de=${hora}`)} aria-current={de === hora ? 'true' : undefined} className={de === hora ? 'btn btn-primary btn-sm' : botaoOk}>
                               {hh(hora)}
                             </Link>
                           ) : (
@@ -223,7 +231,7 @@ export default async function Reservar({ searchParams }: { searchParams: Promise
               const s = STATUS[r.status] ?? { nome: r.status, cor: 'bg-zinc-100 text-zinc-700' };
               return (
                 <li key={r.id}>
-                  <Link href={`/minhas-reservas/${r.id}`} className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200 bg-white p-3 text-sm hover:border-zinc-400">
+                  <Link href={`/minhas-reservas/${r.id}`} className="card-link flex flex-wrap items-center gap-2 p-4 text-sm">
                     <span>{descreverPeriodo(r.inicio, r.fim)}</span>
                     <span className="text-zinc-600">{formatarReais(r.valorCentavos)}</span>
                     <span className={`ml-auto rounded-full px-2 py-0.5 text-xs ${s.cor}`}>{s.nome}</span>

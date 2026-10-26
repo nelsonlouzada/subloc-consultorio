@@ -1,22 +1,415 @@
 @import "tailwindcss";
 
-/* O painel é só claro por enquanto. Sem modo escuro, para a página nunca piscar preto entre
-   duas telas claras nem ficar com fundo escuro atrás dos cartões. */
+/* Design: Apple HIG em versão web. Branco e cinza claro, uma única cor viva (azul) só na ação
+   principal, cantos suaves, sombras quase invisíveis. Vidro (blur) só no cabeçalho flutuante,
+   que é a camada de navegação; o conteúdo fica em superfícies opacas.
+   O painel é só claro por enquanto, para a página nunca piscar preto entre duas telas claras. */
 :root {
-  --background: #fafafa;
-  --foreground: #18181b;
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
+  --accent: #0071e3; /* texto branco sobre ele: 4,9:1 */
+  --accent-hover: #0077ed;
+  --accent-press: #006edb;
+  --surface: #fff;
+  --fill: rgb(0 0 0 / 0.05);
+  --fill-hover: rgb(0 0 0 / 0.09);
+  --link: #0071e3;
+  --tint: #0062c4; /* texto do botão tingido: 5,3:1 sobre o fundo tingido */
+  --danger: #c40018; /* 5,6:1 */
+  --glass: rgb(255 255 255 / 0.72);
+  --hairline: rgb(0 0 0 / 0.08);
+  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
   color-scheme: light;
+}
+
+/* Modo escuro: preto puro de fundo, cartões em #1c1c1e, textos nos tons da Apple.
+   A escala zinc e as cores de estado são reescritas aqui, então as telas não mudam. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #000;
+    --foreground: #f5f5f7;
+    --surface: #1c1c1e;
+    --fill: rgb(255 255 255 / 0.1);
+    --fill-hover: rgb(255 255 255 / 0.16);
+    --link: #4da3ff; /* 7,9:1 sobre #1c1c1e */
+    --tint: #6cb2ff;
+    --danger: #ff8a84;
+    --glass: rgb(28 28 30 / 0.72);
+    --hairline: rgb(255 255 255 / 0.12);
+    color-scheme: dark;
+
+    --color-white: #1c1c1e;
+    --color-zinc-50: #141416;
+    --color-zinc-100: #232326;
+    --color-zinc-200: #2c2c2e;
+    --color-zinc-300: #3a3a3c;
+    --color-zinc-400: #7c7c80;
+    --color-zinc-500: #98989d;
+    --color-zinc-600: #98989d;
+    --color-zinc-700: #d1d1d6;
+    --color-zinc-800: #e5e5ea;
+    --color-zinc-900: #f5f5f7;
+
+    --color-amber-50: #2a2008;
+    --color-amber-100: #3a2d0a;
+    --color-amber-200: #5c4710;
+    --color-amber-900: #fcd34d;
+    --color-orange-50: #2b1708;
+    --color-orange-100: #3d210b;
+    --color-orange-200: #66390f;
+    --color-orange-900: #fdba74;
+    --color-orange-950: #fed7aa;
+    --color-green-50: #0e2418;
+    --color-green-100: #123324;
+    --color-green-200: #1d5436;
+    --color-green-800: #86efac;
+    --color-green-900: #86efac;
+    --color-green-950: #bbf7d0;
+    --color-red-50: #2c1214;
+    --color-red-100: #3f1519;
+    --color-red-200: #6b2227;
+    --color-red-700: #ff8a84;
+    --color-red-800: #ff8a84;
+    --color-red-900: #fca5a5;
+    --color-sky-400: #38bdf8;
+    --color-sky-800: #7dd3fc;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-accent: var(--accent);
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-geist-sans), "Segoe UI", system-ui,
+    sans-serif;
+  --font-mono: ui-monospace, "SF Mono", var(--font-geist-mono), Menlo, monospace;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Cinzas da Apple no lugar dos zinc do Tailwind: todas as telas herdam sem mudar uma classe.
+   zinc-500 e 600 ficam em #6e6e73 (5,1:1 no branco) porque há muito texto secundário nelas. */
+@theme {
+  --color-zinc-50: #f5f5f7;
+  --color-zinc-100: #efeff2;
+  --color-zinc-200: #e5e5ea;
+  --color-zinc-300: #d2d2d7;
+  --color-zinc-400: #a1a1a6;
+  --color-zinc-500: #6e6e73;
+  --color-zinc-600: #6e6e73;
+  --color-zinc-700: #424245;
+  --color-zinc-800: #2c2c2e;
+  --color-zinc-900: #1d1d1f;
+
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+  --radius-2xl: 20px;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.04), 0 2px 8px rgb(0 0 0 / 0.04);
+  --shadow-card: 0 1px 1px rgb(0 0 0 / 0.02), 0 4px 16px rgb(0 0 0 / 0.04);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.04), 0 10px 28px rgb(0 0 0 / 0.08);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family:
+      -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font-geist-sans), "Segoe UI", system-ui,
+      sans-serif;
+    font-size: 1rem; /* 16 px na web, o equivalente ao corpo de 17 pt do iOS */
+    line-height: 1.5;
+    letter-spacing: -0.011em;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.022em;
+  }
+
+  h1 {
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+
+  a,
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  a,
+  button,
+  input,
+  select,
+  textarea {
+    transition:
+      background-color 180ms var(--ease),
+      border-color 180ms var(--ease),
+      color 180ms var(--ease),
+      box-shadow 180ms var(--ease),
+      transform 180ms var(--ease),
+      opacity 180ms var(--ease);
+  }
+
+  /* Foco sempre visível: anel azul suave, igual ao dos campos do macOS. */
+  :focus-visible {
+    outline: 3px solid rgb(0 113 227 / 0.45);
+    outline-offset: 2px;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    background-color: var(--surface);
+    border-color: var(--color-zinc-300);
+    border-radius: var(--radius-lg);
+    min-height: 2.75rem; /* alvo de toque de 44 */
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):hover,
+  select:hover,
+  textarea:hover {
+    border-color: var(--color-zinc-400);
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px rgb(0 113 227 / 0.18);
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--accent);
+  }
+
+  /* Links de texto: azul sem sublinhado, sublinham ao passar o ponteiro (como no macOS). */
+  a.underline {
+    color: var(--link);
+    text-decoration: none;
+  }
+  a.underline:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  ::selection {
+    background: rgb(0 113 227 / 0.22);
+  }
+}
+
+@layer components {
+  /* Cartão: superfície opaca, sem vidro (o vidro é só da camada de navegação). */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Linha clicável de lista: sobe de leve ao passar o ponteiro. */
+  .card-link {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-card);
+  }
+  .card-link:hover {
+    border-color: rgb(0 0 0 / 0.14);
+    box-shadow: var(--shadow-lift);
+    transform: translateY(-1px);
+  }
+  .card-link:active {
+    transform: translateY(0) scale(0.995);
+    box-shadow: var(--shadow-card);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0.5rem 1.25rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+    line-height: 1.25;
+    cursor: pointer;
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  /* Ação principal: a única cor viva da tela. */
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 1px 2px rgb(0 113 227 / 0.25);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-hover);
+    box-shadow: 0 4px 14px rgb(0 113 227 / 0.28);
+  }
+  .btn-primary:active:not(:disabled) {
+    background: var(--accent-press);
+  }
+
+  /* Ação afirmativa secundária: texto azul sobre fundo azul bem claro. */
+  .btn-tinted {
+    background: rgb(0 113 227 / 0.1);
+    color: var(--tint);
+  }
+  .btn-tinted:hover:not(:disabled) {
+    background: rgb(0 113 227 / 0.16);
+  }
+
+  /* Neutro: cancelar, sair, voltar. */
+  .btn-secondary {
+    background: var(--surface);
+    border-color: var(--color-zinc-300);
+    color: var(--foreground);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background: var(--color-zinc-50);
+    border-color: var(--color-zinc-400);
+  }
+
+  /* Destrutivo: vermelho só no texto e num fundo tingido, nunca bloco sólido. */
+  .btn-destructive {
+    background: rgb(215 0 21 / 0.08);
+    color: var(--danger);
+  }
+  .btn-destructive:hover:not(:disabled) {
+    background: rgb(215 0 21 / 0.14);
+  }
+
+  .btn-sm {
+    min-height: 2.25rem;
+    padding: 0.25rem 0.875rem;
+    font-size: 0.875rem;
+  }
+
+  /* Filtro/aba em pílula (controle segmentado). */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.25rem;
+    padding: 0.25rem 0.875rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    background: var(--fill);
+    color: var(--color-zinc-700);
+  }
+  .pill:hover {
+    background: var(--fill-hover);
+  }
+  .pill[aria-current="page"],
+  .pill[aria-current="true"] {
+    background: var(--foreground);
+    color: var(--background);
+  }
+
+  /* Camada de navegação: o único lugar com vidro. */
+  .glass-bar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--glass);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    backdrop-filter: saturate(180%) blur(24px);
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  /* Itens do menu: pílula que acende ao passar o ponteiro. */
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 2.25rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--color-zinc-700);
+  }
+  .nav-link:hover {
+    background: var(--fill);
+    color: var(--foreground);
+  }
+
+  .nav-badge {
+    display: inline-flex;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #ff3b30;
+    padding: 0 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    color: #fff;
+  }
+
+  /* Entrada suave das telas. */
+  .enter {
+    animation: enter 420ms var(--ease) both;
+  }
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Sem transparência: o vidro vira superfície opaca. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass-bar {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Mais contraste: bordas e anéis mais firmes. */
+@media (prefers-contrast: more) {
+  :root {
+    --hairline: rgb(0 0 0 / 0.35);
+  }
+}
+
+/* Sem movimento: nada desliza nem escala; só as cores mudam. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+  .card-link:hover,
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
 }

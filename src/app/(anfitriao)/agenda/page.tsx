@@ -132,12 +132,12 @@ export default async function Agenda({ searchParams }: { searchParams: Promise<B
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold">Agenda</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Agenda</h1>
         <div className="ml-auto flex flex-wrap items-center gap-2 text-sm">
-          <Link href={link('semana', data)} aria-current={visao === 'semana' ? 'page' : undefined} className={`rounded-lg border px-3 py-1.5 ${visao === 'semana' ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-300 bg-white'}`}>
+          <Link href={link('semana', data)} aria-current={visao === 'semana' ? 'page' : undefined} className="pill">
             Semana
           </Link>
-          <Link href={link('mes', data)} aria-current={visao === 'mes' ? 'page' : undefined} className={`rounded-lg border px-3 py-1.5 ${visao === 'mes' ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-zinc-300 bg-white'}`}>
+          <Link href={link('mes', data)} aria-current={visao === 'mes' ? 'page' : undefined} className="pill">
             Mês
           </Link>
         </div>
@@ -254,7 +254,7 @@ function ListaSemana({ dias, itens, dataAtual }: { dias: DataLocal[]; itens: Lin
       <h3 className="text-base font-semibold">Na semana</h3>
       {comItens.length === 0 && <p className="text-sm text-zinc-600">Nada marcado nesta semana.</p>}
       {comItens.map((d) => (
-        <div key={formatarDataISO(d)} className="rounded-xl border border-zinc-200 bg-white p-3">
+        <div key={formatarDataISO(d)} className="card p-4">
           <p className="mb-2 text-sm font-medium">{rotuloDia(d)}</p>
           <ul className="space-y-2">
             {itensDoDia(itens, d).map((i) => (

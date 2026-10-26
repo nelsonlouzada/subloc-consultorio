@@ -35,7 +35,7 @@ export default async function Carteira({ searchParams }: { searchParams: Promise
 
   return (
     <div className="mx-auto max-w-xl space-y-5">
-      <h1 className="text-2xl font-semibold">Carteira</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Carteira</h1>
 
       {erro && TEXTO_ERRO_COMPRA[erro as ErroCompra] && (
         <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">
@@ -43,7 +43,7 @@ export default async function Carteira({ searchParams }: { searchParams: Promise
         </p>
       )}
 
-      <section className="rounded-2xl border border-zinc-200 bg-white p-4">
+      <section className="card p-5">
         <p className="text-sm text-zinc-600">Saldo disponível</p>
         <p className="text-3xl font-semibold">{formatarReais(saldoCentavos)}</p>
         {saldoCentavos > 0 && (
@@ -73,7 +73,7 @@ export default async function Carteira({ searchParams }: { searchParams: Promise
       )}
 
       {pacotes.length > 0 && (
-        <section aria-label="Banco de horas" className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4">
+        <section aria-label="Banco de horas" className="space-y-3 card p-5">
           <h2 className="font-semibold">Banco de horas</h2>
           <p className="text-sm text-zinc-700">Compre crédito adiantado e use nas suas reservas, com bônus.</p>
           <ul className="space-y-2">
@@ -87,7 +87,7 @@ export default async function Carteira({ searchParams }: { searchParams: Promise
                 </div>
                 <form action={comprarPacoteAction} className="ml-auto">
                   <input type="hidden" name="pacoteId" value={p.id} />
-                  <button type="submit" className="rounded-lg border border-zinc-900 bg-white px-3 py-2 hover:bg-zinc-900 hover:text-white">
+                  <button type="submit" className="btn btn-tinted btn-sm">
                     Comprar
                   </button>
                 </form>
@@ -98,7 +98,7 @@ export default async function Carteira({ searchParams }: { searchParams: Promise
       )}
 
       {lotes.length > 0 && (
-        <section aria-label="Validades" className="rounded-2xl border border-zinc-200 bg-white p-4">
+        <section aria-label="Validades" className="card p-5">
           <h2 className="mb-2 font-semibold">Validades</h2>
           <ul className="space-y-1 text-sm">
             {lotes.map((l) => (
@@ -110,7 +110,7 @@ export default async function Carteira({ searchParams }: { searchParams: Promise
         </section>
       )}
 
-      <section aria-label="Extrato" className="rounded-2xl border border-zinc-200 bg-white p-4">
+      <section aria-label="Extrato" className="card p-5">
         <h2 className="mb-2 font-semibold">Extrato</h2>
         {extrato.length === 0 ? (
           <p className="text-sm text-zinc-600">Nenhuma movimentação ainda.</p>

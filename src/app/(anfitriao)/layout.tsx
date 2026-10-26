@@ -13,30 +13,30 @@ export default async function LayoutAnfitriao({ children }: { children: React.Re
     sala ? contarSolicitacoes(sala.espaco.id) : Promise.resolve(0),
   ]);
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900">
-      <header className="border-b border-zinc-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <span className="font-semibold">Painel da sala</span>
-          <nav aria-label="Principal" className="flex gap-4 text-sm">
-            <Link href="/inicio" className="hover:underline">
+    <div className="min-h-screen">
+      <header className="glass-bar">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-8 gap-y-2 px-5 py-3">
+          <span className="text-base font-semibold tracking-tight">Painel da sala</span>
+          <nav aria-label="Principal" className="flex flex-wrap gap-1">
+            <Link href="/inicio" className="nav-link">
               Início
             </Link>
-            <Link href="/agenda" className="hover:underline">
+            <Link href="/agenda" className="nav-link">
               Agenda
             </Link>
-            <Link href="/solicitacoes" className="hover:underline">
+            <Link href="/solicitacoes" className="nav-link">
               Solicitações
               {solicitacoes > 0 && (
-                <span className="ml-1 rounded-full bg-amber-200 px-1.5 text-xs text-amber-900">
+                <span className="nav-badge">
                   {solicitacoes}
                   <span className="sr-only"> pedido(s) para aprovar</span>
                 </span>
               )}
             </Link>
-            <Link href="/profissionais" className="hover:underline">
+            <Link href="/profissionais" className="nav-link">
               Profissionais
               {pendentes > 0 && (
-                <span className="ml-1 rounded-full bg-amber-200 px-1.5 text-xs text-amber-900">
+                <span className="nav-badge">
                   {pendentes}
                   <span className="sr-only"> cadastro(s) para aprovar</span>
                 </span>
@@ -49,7 +49,7 @@ export default async function LayoutAnfitriao({ children }: { children: React.Re
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <main className="enter mx-auto max-w-6xl px-5 py-10">{children}</main>
     </div>
   );
 }
