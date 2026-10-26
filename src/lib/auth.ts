@@ -1,11 +1,22 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { db, schema } from '@/db';
 import { urlDeConfirmacao } from './confirmacao';
 import { enviarEmail } from './email';
 import { emailConfirmarEndereco, emailRedefinirSenha } from '@/modulos/comunicacao/modelos';
 
 export const auth = betterAuth({
+  hooks: {
+    // A rota pública de cadastro da biblioteca fica fechada: ela criaria contas sem CPF, registro no conselho nem aceite
+    // do contrato. Contas nascem só em `cadastrarProfissional` e no script dos Anfitriões, que chamam a API por dentro
+    // do servidor (sem requisição HTTP, então `ctx.request` não existe).
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === '/sign-up/email' && ctx.request) {
+        throw new APIError('FORBIDDEN', { message: 'O cadastro é feito pelo formulário do sistema.', code: 'CADASTRO_PELO_FORMULARIO' });
+      }
+    }),
+  },
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema: {

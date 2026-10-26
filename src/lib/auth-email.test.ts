@@ -108,3 +108,28 @@ describe('confirmação do e-mail pela biblioteca de login', () => {
     expect(enviarEmail.mock.calls[0][2]).toContain('/api/auth/reset-password/');
   });
 });
+
+describe('cadastro pela API pública', () => {
+  const urlBase = process.env.BETTER_AUTH_URL ?? 'http://localhost:3000';
+  const corpo = (email: string) => JSON.stringify({ name: 'Intruso', email, password: SENHA, papel: 'anfitriao' });
+
+  it('a rota HTTP de cadastro da biblioteca está fechada e não cria conta nem envia e-mail', async () => {
+    const email = `${prefixo}-http@example.com`;
+    const resposta = await auth.handler(
+      new Request(`${urlBase}/api/auth/sign-up/email`, { method: 'POST', headers: { 'content-type': 'application/json', origin: urlBase }, body: corpo(email) }),
+    );
+    expect(resposta.status).toBe(403);
+    expect(await resposta.json()).toMatchObject({ code: 'CADASTRO_PELO_FORMULARIO' });
+    expect(await db.select().from(schema.usuario).where(eq(schema.usuario.email, email))).toHaveLength(0);
+    await new Promise((r) => setTimeout(r, 200));
+    expect(enviarEmail).not.toHaveBeenCalled();
+  });
+
+  it('o cadastro por dentro do servidor (formulário e script dos Anfitriões) continua funcionando', async () => {
+    const email = `${prefixo}-interno@example.com`;
+    const r = await auth.api.signUpEmail({ body: { email, name: 'Pelo Servidor', password: SENHA } });
+    expect(r.user.email).toBe(email);
+    expect(r.user).toMatchObject({ papel: 'profissional' }); // o papel nunca vem do pedido
+  });
+});
+
