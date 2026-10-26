@@ -27,3 +27,6 @@ jobs:
       - run: npm run db:migrar
       - run: npm test
       - run: npm run build
+      # Informativo: mostra vulnerabilidades conhecidas sem derrubar o build (parte delas vem de dentro do Next).
+      - run: npm audit --omit=dev --audit-level=high
+        continue-on-error: true
