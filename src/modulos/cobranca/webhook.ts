@@ -2,7 +2,8 @@ import { and, eq } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { formatarReais } from '@/lib/dinheiro';
 import { registrarAuditoria } from '@/modulos/auditoria/auditoria';
-import { confirmarPagamento } from '@/modulos/agenda/pagamento';
+import { confirmarCobrancaDeSerie } from '@/modulos/agenda/serie-pagamento';
+import { CreditoInsuficienteError, confirmarPagamento } from '@/modulos/agenda/pagamento';
 import { descreverPeriodo } from '@/modulos/agenda/calendario';
 import { concederCredito } from '@/modulos/carteira/carteira';
 import { emailPagamentoAtrasadoVirouCredito } from '@/modulos/comunicacao/modelos';
@@ -41,6 +42,11 @@ export async function aplicarEventoAsaas(corpo: { event?: string; payment?: Paga
     await concluirCompraCredito(c.id, meio, agora);
     return { situacao: 'processado' };
   }
+  // Série (pacote do mês ou uma data por ocorrência): a cobrança tem uma ou mais datas, tratadas uma a uma.
+  if (c.finalidade === 'pacote_mes' || c.finalidade === 'ocorrencia') {
+    await confirmarCobrancaDeSerie(c.id, { usuarioId: null, meio }, {}, agora);
+    return { situacao: 'processado' };
+  }
 
   const [item] = await db.select({ reservaId: schema.cobrancaItem.reservaId }).from(schema.cobrancaItem).where(eq(schema.cobrancaItem.cobrancaId, c.id));
   if (!item?.reservaId) return { situacao: 'problema', detalhe: 'cobrança sem reserva' };
@@ -50,8 +56,14 @@ export async function aplicarEventoAsaas(corpo: { event?: string; payment?: Paga
   const esperandoPagamento = r.status === 'aguardando_pagamento' && c.status === 'pendente';
   const expirada = r.status === 'expirada' && c.status === 'expirada';
   if (esperandoPagamento || expirada) {
-    await confirmarPagamento(r.id, { usuarioId: null, meio }, {}, agora);
-    return { situacao: 'processado' };
+    try {
+      await confirmarPagamento(r.id, { usuarioId: null, meio }, {}, agora);
+      return { situacao: 'processado' };
+    } catch (e) {
+      // O crédito que abatia o pedido já voltou e não há saldo para abater de novo: o dinheiro que chegou vira
+      // crédito integral (abaixo), em vez de o aviso falhar para sempre.
+      if (!(e instanceof CreditoInsuficienteError)) throw e;
+    }
   }
 
   // O dinheiro chegou, mas a reserva já não existe mais para receber (cancelada, ou já paga por outro meio):

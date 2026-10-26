@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   customType,
+  date,
   index,
   integer,
   jsonb,
@@ -241,13 +242,46 @@ export const documentoLegal = pgTable(
   (t) => [unique('documento_legal_tipo_versao_uq').on(t.tipo, t.versao)],
 );
 
+// Série recorrente (E5): um pedido que gera uma reserva por data. Cada ocorrência é uma `reserva` com
+// `serie_id`, e segue o mesmo ciclo da reserva avulsa. A série vai até 60 dias (D4) e é renovada à parte.
+export const serie = pgTable(
+  'serie',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    espacoId: uuid('espaco_id').notNull().references(() => espaco.id, { onDelete: 'cascade' }),
+    profissionalId: text('profissional_id').notNull().references(() => profissional.usuarioId),
+    diasSemana: smallint('dias_semana').array().notNull(), // 1 = segunda ... 7 = domingo
+    frequencia: text('frequencia', { enum: ['semanal', 'quinzenal'] }).notNull(),
+    unidade: text('unidade', { enum: ['hora', 'turno', 'dia'] }).notNull(),
+    turnoId: uuid('turno_id').references(() => turno.id),
+    horaInicio: smallint('hora_inicio'), // só para unidade 'hora'
+    horaFim: smallint('hora_fim'),
+    dataInicio: date('data_inicio', { mode: 'string' }).notNull(),
+    dataFim: date('data_fim', { mode: 'string' }).notNull(),
+    formaPagamento: text('forma_pagamento', { enum: ['pacote_mes', 'por_ocorrencia'] }).notNull(),
+    status: text('status', { enum: ['solicitada', 'aprovada', 'recusada', 'expirada', 'encerrada', 'cancelada'] })
+      .notNull()
+      .default('solicitada'),
+    renovacaoDeId: uuid('renovacao_de_id'),
+    aprovadaPor: text('aprovada_por').references(() => usuario.id),
+    aprovadaEm: timestamp('aprovada_em', { withTimezone: true }),
+    motivoRecusa: text('motivo_recusa'),
+    criadoEm: timestamp('criado_em', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('serie_datas_validas', sql`${t.dataFim} >= ${t.dataInicio}`),
+    index('serie_profissional_idx').on(t.profissionalId),
+    index('serie_espaco_status_idx').on(t.espacoId, t.status),
+  ],
+);
+
 export const reserva = pgTable(
   'reserva',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     espacoId: uuid('espaco_id').notNull().references(() => espaco.id, { onDelete: 'cascade' }),
     profissionalId: text('profissional_id').notNull().references(() => profissional.usuarioId),
-    serieId: uuid('serie_id'), // a tabela de séries chega na E5
+    serieId: uuid('serie_id').references(() => serie.id),
     inicio: timestamp('inicio', { withTimezone: true }).notNull(),
     fim: timestamp('fim', { withTimezone: true }).notNull(),
     unidade: text('unidade', { enum: ['hora', 'turno', 'dia'] }).notNull(), // como foi pedida
@@ -257,7 +291,8 @@ export const reserva = pgTable(
     descontoCentavos: integer('desconto_centavos').notNull().default(0),
     valorCentavos: integer('valor_centavos').notNull(),
     status: text('status', {
-      enum: ['solicitada', 'aguardando_pagamento', 'confirmada', 'realizada', 'falta', 'recusada', 'expirada', 'cancelada'],
+      // 'aprovada' só existe em ocorrência de série: horário retido, cobrança ainda não gerada.
+      enum: ['solicitada', 'aprovada', 'aguardando_pagamento', 'confirmada', 'realizada', 'falta', 'recusada', 'expirada', 'cancelada'],
     })
       .notNull()
       .default('solicitada'),
@@ -353,7 +388,7 @@ export const aceite = pgTable('aceite', {
   ip: text('ip'),
   userAgent: text('user_agent'),
   reservaId: uuid('reserva_id').references(() => reserva.id),
-  serieId: uuid('serie_id'),
+  serieId: uuid('serie_id').references(() => serie.id),
 });
 
 // Recibo numerado de toda cobrança paga (Pix manual, Asaas ou crédito). O PDF é gerado na hora, a partir

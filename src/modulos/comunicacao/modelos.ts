@@ -148,6 +148,142 @@ ${botao(`${urlBase()}/reservar`, 'Escolher outro horário')}`,
   };
 }
 
+export function emailNovaSerie(p: { nome: string; resumo: string; ocorrencias: number; total: string; pacote: boolean }) {
+  return {
+    assunto: `Nova solicitação de série: ${p.nome}`,
+    html: layout(
+      'Nova série pedida',
+      `<p><strong>${esc(p.nome)}</strong> pediu uma série: ${esc(p.resumo)}.</p>
+<p>${p.ocorrencias} ${p.ocorrencias === 1 ? 'data' : 'datas'}, total de <strong>${esc(p.total)}</strong>${p.pacote ? ' (pacote do mês, com desconto)' : ' (pagamento por ocorrência)'}.</p>
+<p>Os horários já estão retidos. Aprove ou recuse a série inteira dentro do prazo.</p>
+${botao(`${urlBase()}/solicitacoes`, 'Ver solicitações')}`,
+    ),
+  };
+}
+
+export function emailSerieAprovada(p: { nome: string; resumo: string; ocorrencias: number; pacote: boolean; serieId: string }) {
+  return {
+    assunto: 'Sua série foi aprovada',
+    html: layout(
+      'Série aprovada',
+      `<p>Olá, ${esc(p.nome)}. Sua série foi aprovada: ${esc(p.resumo)} (${p.ocorrencias} ${p.ocorrencias === 1 ? 'data' : 'datas'}). Os horários continuam reservados para você.</p>
+<p>${
+        p.pacote
+          ? 'O pagamento é por pacote do mês: você recebe um link de pagamento para cada mês, o primeiro agora e os seguintes alguns dias antes de o mês começar.'
+          : 'O pagamento é por ocorrência: você recebe um link de pagamento para cada data, alguns dias antes dela.'
+      }</p>
+${botao(`${urlBase()}/series/${encodeURIComponent(p.serieId)}`, 'Ver a série')}`,
+    ),
+  };
+}
+
+export function emailSerieRecusada(p: { nome: string; resumo: string; motivo: string | null }) {
+  return {
+    assunto: 'Sua série não foi aprovada',
+    html: layout(
+      'Série não aprovada',
+      `<p>Olá, ${esc(p.nome)}. Não foi possível aprovar a série ${esc(p.resumo)}. Os horários foram liberados.</p>
+${p.motivo ? `<p>Motivo informado: ${esc(p.motivo)}</p>` : ''}
+${botao(`${urlBase()}/reservar`, 'Escolher outros horários')}`,
+    ),
+  };
+}
+
+export function emailSerieCobranca(p: {
+  nome: string;
+  periodos: string[];
+  valor: string;
+  creditoUsado?: string | null;
+  prazoPagamento: string | null;
+  pix: { chave: string; beneficiario: string } | null;
+  online?: { copiaCola: string; faturaUrl: string | null } | null;
+  serieId: string;
+  pacote: boolean;
+}) {
+  const lista = `<ul>${p.periodos.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>`;
+  if (p.prazoPagamento === null) {
+    return {
+      assunto: 'Série confirmada com o seu crédito',
+      html: layout(
+        'Série confirmada',
+        `<p>Olá, ${esc(p.nome)}. O seu crédito cobriu ${p.pacote ? 'o pacote do mês' : 'esta data'} e as reservas abaixo já estão confirmadas:</p>
+${lista}
+<p>O código de acesso será enviado por e-mail antes de cada horário.</p>
+${botao(`${urlBase()}/series/${encodeURIComponent(p.serieId)}`, 'Ver a série')}`,
+      ),
+    };
+  }
+  const pagamento = p.online
+    ? `<p>Pix copia e cola:<br><span style="word-break:break-all;font-family:monospace;font-size:12px">${esc(p.online.copiaCola)}</span></p>
+<p>O QR Code e o pagamento por cartão estão na página da série. Assim que o pagamento for reconhecido, as reservas são confirmadas automaticamente.</p>`
+    : p.pix
+      ? `<p>Chave Pix: <strong>${esc(p.pix.chave)}</strong><br>Favorecido: ${esc(p.pix.beneficiario)}</p>
+<p>Depois do pagamento, os responsáveis confirmam o recebimento e as reservas ficam confirmadas.</p>`
+      : '<p>Os responsáveis vão enviar os dados do pagamento.</p>';
+  return {
+    assunto: p.pacote ? 'Pagamento do pacote do mês da sua série' : 'Pagamento de uma data da sua série',
+    html: layout(
+      'Pagamento da série',
+      `<p>Olá, ${esc(p.nome)}. Falta pagar ${p.pacote ? 'o pacote do mês' : 'esta data'} da sua série:</p>
+${lista}
+${p.creditoUsado ? `<p>Usamos <strong>${esc(p.creditoUsado)}</strong> do seu crédito.</p>` : ''}
+<p><strong>Valor a pagar por Pix até ${esc(p.prazoPagamento)}: ${esc(p.valor)}</strong></p>
+${pagamento}
+<p>Sem pagamento até esse horário, ${p.periodos.length === 1 ? 'o horário é liberado' : 'os horários são liberados'}.</p>
+${botao(`${urlBase()}/series/${encodeURIComponent(p.serieId)}`, 'Ver a série')}`,
+    ),
+  };
+}
+
+export function emailSeriePaga(p: { nome: string; valor: string; periodos: string[]; confirmadas: number; serieId: string | null }) {
+  return {
+    assunto: 'Pagamento recebido: sua série está confirmada',
+    html: layout(
+      'Série confirmada',
+      `<p>Olá, ${esc(p.nome)}. Recebemos o pagamento de <strong>${esc(p.valor)}</strong> e ${p.confirmadas === 1 ? 'a reserva abaixo está confirmada' : `as ${p.confirmadas} reservas abaixo estão confirmadas`}:</p>
+<ul>${p.periodos.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>
+<p>O código de acesso será enviado por e-mail antes de cada horário.</p>
+${p.serieId ? botao(`${urlBase()}/series/${encodeURIComponent(p.serieId)}`, 'Ver a série') : ''}`,
+    ),
+  };
+}
+
+export function emailSerieCancelada(p: { nome: string; canceladas: number; credito: string | null; pelaProfissional: boolean }) {
+  return {
+    assunto: 'Série cancelada',
+    html: layout(
+      'Série cancelada',
+      `<p>Olá, ${esc(p.nome)}. ${p.pelaProfissional ? 'Você cancelou a sua série' : 'Os responsáveis pela sala cancelaram a sua série'}: ${p.canceladas} ${p.canceladas === 1 ? 'data que ainda não tinha começado foi cancelada' : 'datas que ainda não tinham começado foram canceladas'} e os horários foram liberados. Códigos de acesso, se havia, deixaram de valer.</p>
+${p.credito ? `<p>Pelas datas já pagas, <strong>${esc(p.credito)}</strong> viraram crédito na sua carteira${p.pelaProfissional ? ', pela política de cancelamento' : ''}.</p>` : ''}
+${botao(`${urlBase()}/carteira`, 'Ver minha carteira')}`,
+    ),
+  };
+}
+
+export function emailSerieCanceladaAviso(p: { nome: string; canceladas: number; credito: string | null }) {
+  return {
+    assunto: 'Série cancelada pelo profissional',
+    html: layout(
+      'Série cancelada',
+      `<p>${esc(p.nome)} cancelou a série: ${p.canceladas} ${p.canceladas === 1 ? 'data foi liberada' : 'datas foram liberadas'}.</p>
+${p.credito ? `<p>Crédito gerado na carteira da pessoa, pela política: ${esc(p.credito)}.</p>` : ''}
+${botao(`${urlBase()}/agenda`, 'Ver a agenda')}`,
+    ),
+  };
+}
+
+export function emailSerieRenovar(p: { nome: string; dataFim: string; serieId: string }) {
+  const br = `${p.dataFim.slice(8, 10)}/${p.dataFim.slice(5, 7)}`;
+  return {
+    assunto: 'Sua série está perto do fim: quer renová-la?',
+    html: layout(
+      'Renovar série',
+      `<p>Olá, ${esc(p.nome)}. Sua série vai até <strong>${esc(br)}</strong>. Para continuar com o mesmo horário, peça a renovação: o pedido já vem preenchido e passa por aprovação como o anterior.</p>
+${botao(`${urlBase()}/series/${encodeURIComponent(p.serieId)}`, 'Renovar a série')}`,
+    ),
+  };
+}
+
 export function emailPagamentoAtrasadoVirouCredito(p: { nome: string; periodo: string; valor: string }) {
   return {
     assunto: 'Recebemos seu pagamento: o valor virou crédito',

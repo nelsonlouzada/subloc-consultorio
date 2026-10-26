@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { contextoRequisicao, exigirProfissional } from '@/lib/sessao';
-import { cancelarReservaPeloProfissional, ReservaJaIniciadaError } from '@/modulos/agenda/cancelamento';
+import { cancelarReservaPeloProfissional, OcorrenciaEmPacoteError, ReservaJaIniciadaError } from '@/modulos/agenda/cancelamento';
 import { EstadoReservaError, ReservaNaoEncontradaError } from '@/modulos/agenda/solicitacao';
 
 export async function cancelarMinhaReservaAction(formData: FormData) {
@@ -17,6 +17,7 @@ export async function cancelarMinhaReservaAction(formData: FormData) {
     destino = r.creditoCentavos > 0 ? 'aviso=cancelada_credito' : 'aviso=cancelada';
   } catch (e) {
     if (e instanceof ReservaJaIniciadaError) destino = 'erro=iniciada';
+    else if (e instanceof OcorrenciaEmPacoteError) destino = 'erro=pacote';
     else if (e instanceof EstadoReservaError) destino = 'erro=estado';
     else if (e instanceof ReservaNaoEncontradaError) redirect('/minhas-reservas');
     else throw e;

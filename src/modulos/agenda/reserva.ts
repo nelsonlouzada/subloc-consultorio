@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, inArray, lt } from 'drizzle-orm';
+import { and, count, countDistinct, desc, eq, gt, inArray, isNotNull, isNull, lt } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { partesLocais } from '@/lib/fuso';
 import { registrarAuditoria } from '@/modulos/auditoria/auditoria';
@@ -62,6 +62,24 @@ export const TEXTO_ERRO_RESERVA: Record<ErroReserva, string> = {
 
 const horaDe = (t: string) => Number(t.slice(0, 2));
 
+/**
+ * Pedidos em aberto (solicitada ou aguardando pagamento) de um Profissional, para o teto de
+ * `MAX_PEDIDOS_ABERTOS`. Uma série inteira conta como um pedido só, por mais ocorrências que tenha.
+ */
+export async function contarPedidosAbertos(profissionalId: string, agora = new Date()): Promise<number> {
+  const abertos = and(
+    eq(schema.reserva.profissionalId, profissionalId),
+    inArray(schema.reserva.status, ['solicitada', 'aguardando_pagamento']),
+    gt(schema.reserva.fim, agora),
+  );
+  const [avulsas] = await db.select({ total: count() }).from(schema.reserva).where(and(abertos, isNull(schema.reserva.serieId)));
+  const [series] = await db
+    .select({ total: countDistinct(schema.reserva.serieId) })
+    .from(schema.reserva)
+    .where(and(abertos, isNotNull(schema.reserva.serieId)));
+  return avulsas.total + series.total;
+}
+
 export type PedidoAvaliado = {
   regras: Regras;
   profissionalNome: string;
@@ -107,16 +125,7 @@ export async function avaliarPedido(
     if (horaDe(regras.abre) !== pIni.hora || horaDe(regras.fecha) - horaDe(regras.abre) !== horas) return falha('unidade_invalida');
   }
 
-  const [{ abertos }] = await db
-    .select({ abertos: count() })
-    .from(schema.reserva)
-    .where(
-      and(
-        eq(schema.reserva.profissionalId, pedido.profissionalId),
-        inArray(schema.reserva.status, ['solicitada', 'aguardando_pagamento']),
-        gt(schema.reserva.fim, agora),
-      ),
-    );
+  const abertos = await contarPedidosAbertos(pedido.profissionalId, agora);
   if (abertos >= MAX_PEDIDOS_ABERTOS) return falha('limite_pedidos');
 
   const ocupacoes = await carregarOcupacoes(
@@ -253,7 +262,7 @@ export async function listarReservasNoPeriodo(espacoId: string, de: Date, ate: D
     .where(
       and(
         eq(schema.reserva.espacoId, espacoId),
-        inArray(schema.reserva.status, ['solicitada', 'aguardando_pagamento', 'confirmada', 'realizada', 'falta']),
+        inArray(schema.reserva.status, ['solicitada', 'aprovada', 'aguardando_pagamento', 'confirmada', 'realizada', 'falta']),
         lt(schema.reserva.inicio, ate),
         gt(schema.reserva.fim, de),
       ),

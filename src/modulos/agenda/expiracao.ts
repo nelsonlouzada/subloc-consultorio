@@ -1,7 +1,7 @@
-import { and, eq, inArray, lte } from 'drizzle-orm';
+import { and, eq, inArray, lte, sql } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { registrarAuditoria } from '@/modulos/auditoria/auditoria';
-import { devolverUso } from '@/modulos/carteira/carteira';
+import { devolverUso, devolverUsoDaCobranca } from '@/modulos/carteira/carteira';
 import { emailReservaExpirada } from '@/modulos/comunicacao/modelos';
 import { notificar } from '@/modulos/comunicacao/notificar';
 import { descreverPeriodo } from './calendario';
@@ -20,6 +20,28 @@ type Expirada = { id: string; profissionalId: string; inicio: Date; fim: Date };
  */
 export async function expirarPrazos(agora = new Date()): Promise<ResultadoExpiracao> {
   const { semAprovacao, semPagamento } = await db.transaction(async (tx) => {
+    // Ocorrência de série aprovada cuja cobrança nunca chegou a ser gerada (worker parado, por exemplo) e que
+    // já está perto demais do início para ser cobrada: o horário é liberado em vez de ficar retido sem dono.
+    const semCobranca: Expirada[] = await tx
+      .select({ id: schema.reserva.id, profissionalId: schema.reserva.profissionalId, inicio: schema.reserva.inicio, fim: schema.reserva.fim })
+      .from(schema.reserva)
+      .innerJoin(schema.regraEspaco, eq(schema.regraEspaco.espacoId, schema.reserva.espacoId))
+      .where(
+        and(
+          eq(schema.reserva.status, 'aprovada'),
+          sql`${schema.reserva.inicio} - make_interval(hours => ${schema.regraEspaco.corteAntesInicioHoras}) <= ${agora}`,
+        ),
+      );
+    const idsSemCobranca = semCobranca.map((r) => r.id);
+    const expiradasSemCobranca = idsSemCobranca.length
+      ? await tx
+          .update(schema.reserva)
+          .set({ status: 'expirada' })
+          .where(and(inArray(schema.reserva.id, idsSemCobranca), eq(schema.reserva.status, 'aprovada')))
+          .returning({ id: schema.reserva.id })
+      : [];
+    const liberadas = new Set(expiradasSemCobranca.map((r) => r.id));
+
     const semAprovacao: Expirada[] = await tx
       .update(schema.reserva)
       .set({ status: 'expirada' })
@@ -42,6 +64,7 @@ export async function expirarPrazos(agora = new Date()): Promise<ResultadoExpira
         fim: schema.reserva.fim,
       });
 
+    semPagamento.push(...semCobranca.filter((r) => liberadas.has(r.id)));
     const todas = [...semAprovacao, ...semPagamento].map((r) => r.id);
     if (todas.length) await tx.delete(schema.ocupacao).where(inArray(schema.ocupacao.reservaId, todas));
 
@@ -54,12 +77,19 @@ export async function expirarPrazos(agora = new Date()): Promise<ResultadoExpira
         .from(schema.cobrancaItem)
         .where(inArray(schema.cobrancaItem.reservaId, semPagamento.map((r) => r.id)));
       if (itens.length) {
-        await tx
+        const expiradas = await tx
           .update(schema.cobranca)
           .set({ status: 'expirada' })
-          .where(and(inArray(schema.cobranca.id, itens.map((i) => i.cobrancaId)), eq(schema.cobranca.status, 'pendente')));
+          .where(and(inArray(schema.cobranca.id, [...new Set(itens.map((i) => i.cobrancaId))]), eq(schema.cobranca.status, 'pendente')))
+          .returning({ id: schema.cobranca.id });
+        for (const c of expiradas) await devolverUsoDaCobranca(tx, c.id, agora);
       }
     }
+    // Uma série cujos pedidos todos expiraram sem aprovação também expira.
+    await tx.execute(sql`
+      update serie set status = 'expirada'
+      where status = 'solicitada'
+        and not exists (select 1 from reserva where reserva.serie_id = serie.id and reserva.status = 'solicitada')`);
     return { semAprovacao, semPagamento };
   });
 

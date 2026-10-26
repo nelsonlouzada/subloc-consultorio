@@ -42,7 +42,7 @@ export class CadastroPendenteError extends Error {
   }
 }
 
-const pixManual = () => {
+export const pixManual = () => {
   const chave = process.env.PIX_MANUAL_CHAVE?.trim();
   const beneficiario = process.env.PIX_MANUAL_NOME?.trim();
   return chave && beneficiario ? { chave, beneficiario } : null;

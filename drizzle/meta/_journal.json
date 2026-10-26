@@ -64,6 +64,13 @@
       "when": 1792529392371,
       "tag": "0008_supreme_pyro",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792973225270,
+      "tag": "0009_orange_zeigeist",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, lte, ne, or } from 'drizzle-orm';
+import { and, eq, isNotNull, lte, ne, or, sql } from 'drizzle-orm';
 import { db, schema } from '@/db';
 
 /**
@@ -20,6 +20,15 @@ export async function encerrarReservas(agora = new Date()): Promise<{ realizadas
       .set({ codigoAcesso: null })
       .where(and(isNotNull(schema.reserva.codigoAcesso), or(ne(schema.reserva.status, 'confirmada'), lte(schema.reserva.fim, agora))))
       .returning({ id: schema.reserva.id });
+
+    // Série aprovada sem mais nenhuma ocorrência por vir (nem aprovada, nem a pagar, nem confirmada) está encerrada.
+    await tx.execute(sql`
+      update serie set status = 'encerrada'
+      where status = 'aprovada'
+        and not exists (
+          select 1 from reserva
+          where reserva.serie_id = serie.id and reserva.status in ('aprovada', 'aguardando_pagamento', 'confirmada')
+        )`);
 
     return { realizadas: realizadas.length, codigosApagados: apagados.length };
   });

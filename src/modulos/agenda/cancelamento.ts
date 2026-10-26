@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, count, eq, inArray } from 'drizzle-orm';
 import { db, schema } from '@/db';
 import { formatarReais } from '@/lib/dinheiro';
 import { registrarAuditoria } from '@/modulos/auditoria/auditoria';
@@ -8,6 +8,17 @@ import { emailCancelamentoAvisoAnfitriao, emailCancelamentoConfirmado, emailRese
 import { anfitrioesAtivos, notificar } from '@/modulos/comunicacao/notificar';
 import { descreverPeriodo } from './calendario';
 import { EstadoReservaError, ReservaNaoEncontradaError } from './solicitacao';
+
+/**
+ * A data faz parte de um pacote do mês ainda não pago: a cobrança é uma só para o mês inteiro, então não dá
+ * para tirar uma data só. É preciso pagar o pacote, esperar o prazo, ou cancelar a série inteira.
+ */
+export class OcorrenciaEmPacoteError extends Error {
+  constructor() {
+    super('Esta data está num pacote do mês ainda não pago. Cancele a série inteira ou aguarde o prazo do pagamento.');
+    this.name = 'OcorrenciaEmPacoteError';
+  }
+}
 
 /** A reserva já começou: não dá mais para cancelar pelo sistema. */
 export class ReservaJaIniciadaError extends Error {
@@ -19,13 +30,14 @@ export class ReservaJaIniciadaError extends Error {
 
 type Quem = { id: string; papel: 'anfitriao' | 'profissional' };
 type Opcoes = { ip?: string | null };
-type Cancelavel = 'solicitada' | 'aguardando_pagamento' | 'confirmada';
+type Cancelavel = 'solicitada' | 'aprovada' | 'aguardando_pagamento' | 'confirmada';
 
 // O Anfitrião só cancela o que já foi aprovado (pedido em análise se recusa); o Profissional
 // também pode retirar o próprio pedido que ainda espera resposta.
 const STATUS_CANCELAVEIS: Record<Quem['papel'], Cancelavel[]> = {
-  anfitriao: ['aguardando_pagamento', 'confirmada'],
-  profissional: ['solicitada', 'aguardando_pagamento', 'confirmada'],
+  // 'aprovada' é a data de uma série já aprovada cuja cobrança ainda não saiu: não há dinheiro envolvido.
+  anfitriao: ['aprovada', 'aguardando_pagamento', 'confirmada'],
+  profissional: ['solicitada', 'aprovada', 'aguardando_pagamento', 'confirmada'],
 };
 
 async function carregar(reservaId: string, quem: Quem) {
@@ -47,6 +59,21 @@ async function carregar(reservaId: string, quem: Quem) {
   return r;
 }
 
+/** A data espera pagamento junto com outras datas da mesma cobrança (pacote do mês de uma série). */
+export async function estaEmPacoteNaoPago(r: { id: string; serieId: string | null; status: string }): Promise<boolean> {
+  if (!r.serieId || r.status !== 'aguardando_pagamento') return false;
+  const [{ n }] = await db
+    .select({ n: count() })
+    .from(schema.cobrancaItem)
+    .where(
+      inArray(
+        schema.cobrancaItem.cobrancaId,
+        db.select({ id: schema.cobrancaItem.cobrancaId }).from(schema.cobrancaItem).where(eq(schema.cobrancaItem.reservaId, r.id)),
+      ),
+    );
+  return n > 1;
+}
+
 const politicaDe = (r: { integralHoras: number; parcialHoras: number; parcialPct: number }) => ({
   integralHoras: r.integralHoras,
   parcialHoras: r.parcialHoras,
@@ -60,7 +87,8 @@ const politicaDe = (r: { integralHoras: number; parcialHoras: number; parcialPct
  */
 export async function previaCancelamento(reservaId: string, profissionalId: string, agora = new Date()) {
   const r = await carregar(reservaId, { id: profissionalId, papel: 'profissional' });
-  const podeCancelar = STATUS_CANCELAVEIS.profissional.includes(r.reserva.status as Cancelavel) && r.reserva.inicio > agora;
+  const emPacote = await estaEmPacoteNaoPago(r.reserva);
+  const podeCancelar = STATUS_CANCELAVEIS.profissional.includes(r.reserva.status as Cancelavel) && r.reserva.inicio > agora && !emPacote;
   const [paga] = await db
     .select({ id: schema.cobranca.id })
     .from(schema.cobrancaItem)
@@ -70,7 +98,7 @@ export async function previaCancelamento(reservaId: string, profissionalId: stri
   const { percentual, creditoCentavos } = pago
     ? creditoPorCancelamento(politicaDe(r), r.reserva.inicio, agora, r.reserva.valorCentavos)
     : { percentual: 0, creditoCentavos: 0 };
-  return { podeCancelar, pago, percentual, creditoCentavos, valorCentavos: r.reserva.valorCentavos };
+  return { podeCancelar, emPacote, pago, percentual, creditoCentavos, valorCentavos: r.reserva.valorCentavos };
 }
 
 async function cancelar(reservaId: string, quem: Quem, motivo: string | null, opcoes: Opcoes, agora: Date) {
@@ -78,6 +106,7 @@ async function cancelar(reservaId: string, quem: Quem, motivo: string | null, op
   const aceitos = STATUS_CANCELAVEIS[quem.papel];
   if (!aceitos.includes(r.reserva.status as Cancelavel)) throw new EstadoReservaError(r.reserva.status);
   if (r.reserva.inicio <= agora) throw new ReservaJaIniciadaError();
+  if (await estaEmPacoteNaoPago(r.reserva)) throw new OcorrenciaEmPacoteError();
 
   const motivoLimpo = motivo?.trim() ? motivo.trim().slice(0, 500) : null;
 

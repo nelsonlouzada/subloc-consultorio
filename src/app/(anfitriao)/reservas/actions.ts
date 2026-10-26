@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { contextoRequisicao, exigirAnfitriao } from '@/lib/sessao';
 import { CodigoInvalidoError, enviarCodigoAcesso } from '@/modulos/agenda/acesso';
-import { cancelarReserva, ReservaJaIniciadaError } from '@/modulos/agenda/cancelamento';
+import { cancelarReserva, OcorrenciaEmPacoteError, ReservaJaIniciadaError } from '@/modulos/agenda/cancelamento';
 import { desfazerFalta, registrarFalta, ReservaNaoIniciadaError } from '@/modulos/agenda/falta';
 import { CreditoInsuficienteError, marcarPago } from '@/modulos/agenda/pagamento';
 import { EstadoReservaError, ReservaNaoEncontradaError } from '@/modulos/agenda/solicitacao';
@@ -46,6 +46,7 @@ export async function cancelarReservaAction(formData: FormData) {
     resultado = r.creditoCentavos > 0 ? 'aviso=cancelada_paga' : 'aviso=cancelada';
   } catch (e) {
     if (e instanceof ReservaJaIniciadaError) resultado = 'erro=iniciada';
+    else if (e instanceof OcorrenciaEmPacoteError) resultado = 'erro=pacote';
     else if (e instanceof EstadoReservaError || e instanceof ReservaNaoEncontradaError) resultado = 'erro=estado';
     else throw e;
   }

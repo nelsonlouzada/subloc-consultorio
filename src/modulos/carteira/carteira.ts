@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, type SQL, sql } from 'drizzle-orm';
 import { db, schema } from '@/db';
 
 const DIA_MS = 86_400_000;
@@ -147,12 +147,24 @@ type Transacao = Parameters<Parameters<typeof db.transaction>[0]>[0];
  * Devolve o total devolvido; chamar de novo não devolve nada.
  */
 export async function devolverUso(tx: Transacao, reservaId: string, agora = new Date()): Promise<number> {
+  return devolverMovimentos(tx, eq(schema.creditoMovimento.reservaId, reservaId), { reservaId }, agora);
+}
+
+/** O mesmo, para o crédito que abateu uma cobrança com várias reservas (pacote do mês de uma série). */
+export async function devolverUsoDaCobranca(tx: Transacao, cobrancaId: string, agora = new Date()): Promise<number> {
+  return devolverMovimentos(tx, eq(schema.creditoMovimento.cobrancaId, cobrancaId), { cobrancaId }, agora);
+}
+
+async function devolverMovimentos(
+  tx: Transacao,
+  filtro: SQL,
+  marca: { reservaId?: string; cobrancaId?: string },
+  agora: Date,
+): Promise<number> {
   const movimentos = await tx
     .select({ loteId: schema.creditoMovimento.loteId, valor: schema.creditoMovimento.valorCentavos })
     .from(schema.creditoMovimento)
-    .where(
-      and(eq(schema.creditoMovimento.reservaId, reservaId), inArray(schema.creditoMovimento.tipo, ['uso', 'devolucao_uso'])),
-    );
+    .where(and(filtro, inArray(schema.creditoMovimento.tipo, ['uso', 'devolucao_uso'])));
   const liquidoPorLote = new Map<string, number>();
   for (const m of movimentos) liquidoPorLote.set(m.loteId, (liquidoPorLote.get(m.loteId) ?? 0) - m.valor);
 
@@ -162,7 +174,7 @@ export async function devolverUso(tx: Transacao, reservaId: string, agora = new 
     const [lote] = await tx.select().from(schema.creditoLote).where(eq(schema.creditoLote.id, loteId)).for('update');
     const validadeAte = lote.validadeAte > agora ? lote.validadeAte : new Date(agora.getTime() + 7 * DIA_MS);
     await tx.update(schema.creditoLote).set({ saldoCentavos: lote.saldoCentavos + usado, validadeAte }).where(eq(schema.creditoLote.id, loteId));
-    await tx.insert(schema.creditoMovimento).values({ loteId, tipo: 'devolucao_uso', valorCentavos: usado, reservaId });
+    await tx.insert(schema.creditoMovimento).values({ loteId, tipo: 'devolucao_uso', valorCentavos: usado, ...marca });
     total += usado;
   }
   return total;
