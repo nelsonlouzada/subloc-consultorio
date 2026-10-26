@@ -13,7 +13,7 @@
   --surface: #fff;
   --fill: rgb(0 0 0 / 0.05);
   --fill-hover: rgb(0 0 0 / 0.09);
-  --link: #0071e3;
+  --link: #0066cc; /* texto de link: 5,3:1 sobre o fundo e 5,6:1 sobre o cartão (o #0071e3 dava 4,3:1) */
   --tint: #0062c4; /* texto do botão tingido: 5,3:1 sobre o fundo tingido */
   --danger: #c40018; /* 5,6:1 */
   --glass: rgb(255 255 255 / 0.72);
@@ -359,7 +359,7 @@
     align-items: center;
     justify-content: center;
     border-radius: 999px;
-    background: #ff3b30;
+    background: #d70015; /* branco sobre ele: 5,4:1 (o #ff3b30 dava 3,5:1) */
     padding: 0 0.375rem;
     font-size: 0.75rem;
     font-weight: 600;

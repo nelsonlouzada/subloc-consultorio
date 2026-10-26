@@ -64,7 +64,7 @@ export default function FormularioSerie({
             return (
               <label
                 key={d.n}
-                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${aberto ? 'border-zinc-300 bg-white' : 'border-zinc-200 bg-zinc-100 text-zinc-400'}`}
+                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${aberto ? 'border-zinc-300 bg-white' : 'border-zinc-200 bg-zinc-100 text-zinc-500'}`}
               >
                 <input type="checkbox" name="dias" value={d.n} defaultChecked={valores.dias.includes(String(d.n))} disabled={!aberto} />
                 {d.nome}

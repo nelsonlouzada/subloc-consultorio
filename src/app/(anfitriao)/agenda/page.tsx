@@ -321,7 +321,7 @@ function GradeMes({ semanas, mes, itens, funcionamento, hoje }: { semanas: DataL
                 key={iso}
                 href={link('semana', d)}
                 aria-label={`${d.dia} de ${nomeMes(d.mes)}${doDia.length ? `, ${doDia.length} item(ns) na agenda` : ''}`}
-                className={`min-h-16 border-l border-zinc-100 p-1.5 text-sm first:border-l-0 ${d.mes !== mes ? 'text-zinc-400' : ''} ${aberto ? '' : 'bg-zinc-50'} ${iso === hoje ? 'ring-2 ring-inset ring-sky-400' : ''}`}
+                className={`min-h-16 border-l border-zinc-100 p-1.5 text-sm first:border-l-0 ${d.mes !== mes ? 'text-zinc-500' : ''} ${aberto ? '' : 'bg-zinc-50'} ${iso === hoje ? 'ring-2 ring-inset ring-sky-400' : ''}`}
               >
                 {d.dia}
                 {doDia.length > 0 && (
