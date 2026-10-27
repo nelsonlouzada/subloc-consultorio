@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -42,11 +42,27 @@ describe('contraste do texto (WCAG AA, 4,5:1)', () => {
     expect(razao(cor(tema, '--color-zinc-500'), cor(claro, '--background'))).toBeGreaterThanOrEqual(4.5);
     expect(razao(cor(escuro, '--color-zinc-500'), cor(escuro, '--surface'))).toBeGreaterThanOrEqual(4.5);
     expect(razao(cor(escuro, '--color-zinc-500'), cor(escuro, '--background'))).toBeGreaterThanOrEqual(4.5);
+    // Itens desabilitados e dias fechados ficam sobre o zinc-100.
+    expect(razao(cor(tema, '--color-zinc-500'), cor(tema, '--color-zinc-100'))).toBeGreaterThanOrEqual(4.5);
+    expect(razao(cor(escuro, '--color-zinc-500'), cor(escuro, '--color-zinc-100'))).toBeGreaterThanOrEqual(4.5);
   });
 
   it('texto branco sobre o fundo do selo de contagem do menu', () => {
     const selo = css.match(/\.nav-badge\s*\{[^}]*background:\s*(#[0-9a-fA-F]{6})/);
     expect(selo).not.toBeNull();
     expect(razao('ffffff', selo![1].slice(1))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('texto sobre o azul de destaque usa branco literal (text-white vira cinza escuro no modo escuro)', () => {
+    const achados: string[] = [];
+    const varrer = (dir: string) => {
+      for (const nome of readdirSync(dir)) {
+        const caminho = join(dir, nome);
+        if (statSync(caminho).isDirectory()) varrer(caminho);
+        else if (/\.tsx$/.test(nome) && /bg-accent[^'"`]*text-white/.test(readFileSync(caminho, 'utf8'))) achados.push(caminho);
+      }
+    };
+    varrer(__dirname);
+    expect(achados).toEqual([]);
   });
 });

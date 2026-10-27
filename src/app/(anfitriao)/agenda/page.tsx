@@ -216,7 +216,7 @@ function GradeSemana({ dias, itens, abre, fecha, funcionamento, hoje }: { dias: 
               className={`relative border-l border-zinc-200 ${aberto ? '' : 'bg-zinc-100'}`}
               style={{ backgroundImage: 'repeating-linear-gradient(to bottom, transparent 0, transparent calc(100% / ' + horas + ' - 1px), rgb(228 228 231) calc(100% / ' + horas + ' - 1px), rgb(228 228 231) calc(100% / ' + horas + '))' }}
             >
-              {!aberto && <span className="absolute inset-x-0 top-2 text-center text-xs text-zinc-500">fechado</span>}
+              {!aberto && <span className="absolute inset-x-0 top-2 text-center text-xs text-zinc-700">fechado</span>}
               {itensDoDia(itens, d).map((i) => {
                 const s = Math.max(i.inicio.getTime(), ini.getTime());
                 const e = Math.min(i.fim.getTime(), fim.getTime());

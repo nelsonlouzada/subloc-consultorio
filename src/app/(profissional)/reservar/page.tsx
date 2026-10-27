@@ -108,7 +108,7 @@ export default async function Reservar({ searchParams }: { searchParams: Promise
                   const passado = iso < formatarDataISO(hoje);
                   const aberto = sala.regras.diasFuncionamento.includes(semana.indexOf(d) + 1);
                   const livre = !passado && aberto;
-                  const classe = `block rounded-xl border px-1 py-2.5 text-center ${atual ? 'border-accent bg-accent text-white shadow-sm' : livre ? 'border-zinc-200 bg-white hover:border-accent hover:text-accent' : 'border-transparent bg-zinc-100 text-zinc-500'}`;
+                  const classe = `block rounded-xl border px-1 py-2.5 text-center ${atual ? 'border-accent bg-accent text-[#fff] shadow-sm' : livre ? 'border-zinc-200 bg-white hover:border-accent hover:text-accent' : 'border-transparent bg-zinc-100 text-zinc-500'}`;
                   return (
                     <li key={iso}>
                       {livre ? (

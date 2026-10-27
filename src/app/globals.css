@@ -87,15 +87,15 @@
 }
 
 /* Cinzas da Apple no lugar dos zinc do Tailwind: todas as telas herdam sem mudar uma classe.
-   zinc-500 e 600 ficam em #6e6e73 (5,1:1 no branco) porque há muito texto secundário nelas. */
+   zinc-500 e 600 ficam em #68686d (5,5:1 no branco e 4,8:1 sobre o zinc-100, onde ficam os itens desabilitados). */
 @theme {
   --color-zinc-50: #f5f5f7;
   --color-zinc-100: #efeff2;
   --color-zinc-200: #e5e5ea;
   --color-zinc-300: #d2d2d7;
   --color-zinc-400: #a1a1a6;
-  --color-zinc-500: #6e6e73;
-  --color-zinc-600: #6e6e73;
+  --color-zinc-500: #68686d;
+  --color-zinc-600: #68686d;
   --color-zinc-700: #424245;
   --color-zinc-800: #2c2c2e;
   --color-zinc-900: #1d1d1f;

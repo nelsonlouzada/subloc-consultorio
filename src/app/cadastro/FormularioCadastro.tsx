@@ -86,7 +86,7 @@ export default function FormularioCadastro({ contrato, versao }: { contrato: str
           <li
             key={nome}
             aria-current={i === passo ? 'step' : undefined}
-            className={`flex-1 rounded-full px-2 py-1 text-center ${i === passo ? 'bg-accent text-white' : 'bg-zinc-200 text-zinc-700'}`}
+            className={`flex-1 rounded-full px-2 py-1 text-center ${i === passo ? 'bg-accent text-[#fff]' : 'bg-zinc-200 text-zinc-700'}`}
           >
             {i + 1}. {nome}
           </li>

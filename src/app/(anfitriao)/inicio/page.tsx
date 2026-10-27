@@ -67,7 +67,7 @@ export default async function Inicio() {
           <ul className="space-y-1 text-sm">
             {pagamentosExpirando.map((p) => (
               <li key={p.id}>
-                <Link href={`/reservas/${p.id}`} className="font-medium underline">
+                <Link href={`/reservas/${p.id}`} className="inline-block py-1 font-medium underline">
                   Pagamento de {p.profissional} vence {p.prazo ? descreverMomento(p.prazo) : 'em breve'}
                 </Link>{' '}
                 ({descreverPeriodo(p.inicio, p.fim)})
@@ -75,7 +75,7 @@ export default async function Inicio() {
             ))}
             {codigosAEnviar.map((c) => (
               <li key={c.id}>
-                <Link href={`/reservas/${c.id}`} className="font-medium underline">
+                <Link href={`/reservas/${c.id}`} className="inline-block py-1 font-medium underline">
                   Enviar código de acesso a {c.profissional}
                 </Link>{' '}
                 ({descreverPeriodo(c.inicio, c.fim)})
@@ -83,14 +83,14 @@ export default async function Inicio() {
             ))}
             {solicitacoes > 0 && (
               <li>
-                <Link href="/solicitacoes" className="font-medium underline">
+                <Link href="/solicitacoes" className="inline-block py-1 font-medium underline">
                   {solicitacoes} {solicitacoes === 1 ? 'pedido de reserva espera' : 'pedidos de reserva esperam'} decisão
                 </Link>
               </li>
             )}
             {pendentes > 0 && (
               <li>
-                <Link href="/profissionais" className="font-medium underline">
+                <Link href="/profissionais" className="inline-block py-1 font-medium underline">
                   {pendentes} {pendentes === 1 ? 'cadastro espera' : 'cadastros esperam'} aprovação
                 </Link>
               </li>
