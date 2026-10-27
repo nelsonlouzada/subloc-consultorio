@@ -42,6 +42,9 @@ export default async function LayoutAnfitriao({ children }: { children: React.Re
                 </span>
               )}
             </Link>
+            <Link href="/configuracoes" className="nav-link">
+              Configurações
+            </Link>
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">
             <span className="text-zinc-600">{sessao.user.name}</span>
