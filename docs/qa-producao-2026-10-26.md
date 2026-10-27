@@ -205,6 +205,23 @@ A Onda 1 foi implementada em 27/10/2026, **um commit por item, com testes, ainda
 
 Os itens da Onda 2 e a parte de operação continuam abertos, como descrito abaixo.
 
+### 4.2 Situação da Onda 2 (implementada, ainda sem publicar)
+
+Um commit por item, com testes. Estado do código: 340 testes passando, lint e tipos limpos.
+
+| ID | Situação | Commit | O que foi feito e como foi verificado |
+|---|---|---|---|
+| QA-07 | Corrigido | `16a380c` | Links `#0066cc` (5,3:1 e 5,6:1), selo do menu `#d70015` (5,4:1), texto desabilitado em zinc-500. Teste lê o `globals.css` e exige 4,5:1 nos dois temas. |
+| QA-08 | Corrigido | `703137b` | Links de voltar e linhas de lista com altura de toque maior (`py-1`, `inline-block`) nas 10 telas apontadas. |
+| QA-09 | Corrigido | `51da862` | Título próprio em todas as páginas (Início, Agenda, Entrar, Esqueci a senha, Redefinir a senha) e modelo "… · Painel da sala" no layout raiz. Teste varre todas as páginas e falha se alguma ficar sem título. |
+| QA-13 | Corrigido, com uma parte em aberto | `0e6c133` | Página 404 em português; "Aguardando pagamento" do Anfitrião mostra o valor a pagar depois de crédito e desconto do pacote (teste com crédito). **Em aberto, decisão de produto:** limitar "Renovar série" à janela de aviso. |
+| QA-11 | Corrigido, com uma parte para você | `af933fe` | Imagem roda como `node` (build e execução conferidos com Docker) e nova rota `GET /api/saude` (200 com banco, 503 sem). **Falta no Railway:** em Settings do serviço `web`, Healthcheck Path = `/api/saude`. Não adotei multi-stage porque o worker precisa do `tsx` e das dependências de desenvolvimento. |
+| QA-12 | Corrigido | `8cb2ff6` | `npm audit --omit=dev --audit-level=high` no CI, sem bloquear. Atualizar o Next quando houver patch continua em aberto. |
+| QA-10 | Corrigido | `b4aab54` | Os testes usam `subloc_teste` (ou `DATABASE_URL_TESTE`), criado e migrado pelo `globalSetup`; no CI segue o banco descartável. Os CPFs fixos deixam de colidir com dados de uso local. |
+
+Ainda aberto da Onda 2: CSP passar de observação para bloqueio (depois de alguns dias sem violações).
+
+
 ## 5. Plano de correção
 
 **Onda 1: antes de abrir para as amigas (meio dia de trabalho). FEITA, aguardando publicação**
@@ -217,7 +234,7 @@ Os itens da Onda 2 e a parte de operação continuam abertos, como descrito abai
 | 4 | QA-01: cabeçalhos de segurança (CSP em modo relatório) | P | Código |
 | 5 | QA-05 e QA-06: `method="post"` e assunto seguro | PP | Código |
 
-**Onda 2: antes do lançamento público (E6)**
+**Onda 2: antes do lançamento público (E6). FEITA, aguardando publicação (exceto CSP em bloqueio)**
 
 | Item | Esforço |
 |---|---|
