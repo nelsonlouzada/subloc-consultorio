@@ -43,8 +43,7 @@ export default async function Configuracoes({ searchParams }: { searchParams: Pr
   const r = regrasParaTela(sala.regras);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
+    <div className="space-y-6">
       <p className="text-sm text-zinc-700">Regras e prazos da sala. Cada mudança fica registrada com o seu nome.</p>
 
       {aviso && AVISOS[aviso] && (

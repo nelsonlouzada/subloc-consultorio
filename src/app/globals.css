@@ -347,7 +347,8 @@
     font-weight: 500;
     color: var(--color-zinc-700);
   }
-  .nav-link:hover {
+  .nav-link:hover,
+  .nav-link[aria-current="page"] {
     background: var(--fill);
     color: var(--foreground);
   }
