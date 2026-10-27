@@ -45,6 +45,9 @@ export default async function LayoutAnfitriao({ children }: { children: React.Re
             <Link href="/financeiro" className="nav-link">
               Financeiro
             </Link>
+            <Link href="/auditoria" className="nav-link">
+              Auditoria
+            </Link>
             <Link href="/configuracoes" className="nav-link">
               Configurações
             </Link>
