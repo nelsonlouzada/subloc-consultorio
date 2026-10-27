@@ -6,7 +6,10 @@ import { obterProfissional } from '@/modulos/identidade/aprovacao';
 import { linkConsultaConselho } from '@/modulos/identidade/conselhos';
 import { PROFISSOES, STATUS_PROFISSIONAL } from '@/modulos/identidade/opcoes';
 import { formatarReais } from '@/lib/dinheiro';
-import { saldoDisponivel } from '@/modulos/carteira/carteira';
+import { descreverMomento, descreverPeriodo } from '@/modulos/agenda/calendario';
+import { ROTULO_STATUS } from '@/modulos/agenda/consulta';
+import { carteiraDoProfissional } from '@/modulos/carteira/carteira';
+import { reservasDaFicha, ROTULO_MOVIMENTO, ROTULO_ORIGEM_CREDITO, type ReservaDaFicha } from '@/modulos/identidade/ficha';
 import { aprovarAction, bloquearAction, concederCreditoAction, desativarAcessoAction, desbloquearAction, reativarAcessoAction, recusarAction } from '../actions';
 
 export const metadata = { title: 'Profissional' };
@@ -43,6 +46,27 @@ const cpfMascarado = (cpf: string) => `***.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}
 
 const botao = 'rounded-lg px-4 py-2.5 font-medium';
 
+function ListaDeReservas({ itens, vazio }: { itens: ReservaDaFicha[]; vazio: string }) {
+  if (itens.length === 0) return <p className="text-zinc-600">{vazio}</p>;
+  return (
+    <ul className="divide-y divide-zinc-200">
+      {itens.map((r) => {
+        const s = ROTULO_STATUS[r.status] ?? { nome: r.status, cor: 'bg-zinc-100 text-zinc-700' };
+        return (
+          <li key={r.id}>
+            <Link href={`/reservas/${r.id}`} className="flex flex-wrap items-center gap-2 py-2 hover:underline">
+              <span>{descreverPeriodo(r.inicio, r.fim)}</span>
+              <span className="text-zinc-600">{formatarReais(r.valorCentavos)}</span>
+              {r.serieId && <span className="text-xs text-zinc-600">série</span>}
+              <span className={`ml-auto rounded-full px-2 py-0.5 text-xs ${s.cor}`}>{s.nome}</span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export default async function DetalheProfissional({
   params,
   searchParams,
@@ -57,7 +81,9 @@ export default async function DetalheProfissional({
   if (!p) notFound();
   const historico = await listarAuditoriaDe('profissional', p.id);
   const consulta = linkConsultaConselho(p.conselho);
-  const saldo = await saldoDisponivel(p.id);
+  const carteira = await carteiraDoProfissional(p.id);
+  const saldo = carteira.saldoCentavos;
+  const reservas = await reservasDaFicha(p.id);
 
   return (
     <div className="space-y-5">
@@ -166,6 +192,17 @@ export default async function DetalheProfissional({
         )}
       </section>
 
+      <section aria-label="Reservas" className="space-y-3 card p-5 text-sm">
+        <h2 className="font-semibold">Reservas</h2>
+        <p className="text-zinc-700">
+          {reservas.contagens.realizadas} realizadas · {reservas.contagens.faltas} {reservas.contagens.faltas === 1 ? 'falta' : 'faltas'} · {reservas.contagens.canceladas} canceladas · {reservas.contagens.todas} no total
+        </p>
+        <h3 className="font-medium">Próximas</h3>
+        <ListaDeReservas itens={reservas.proximas} vazio="Nenhuma reserva a caminho." />
+        <h3 className="font-medium">Últimas</h3>
+        <ListaDeReservas itens={reservas.recentes} vazio="Nenhuma reserva encerrada ainda." />
+      </section>
+
       <section className="space-y-3 card p-5 text-sm">
         <h2 className="font-semibold">Acesso à conta</h2>
         {p.acessoAtivo ? (
@@ -217,6 +254,36 @@ export default async function DetalheProfissional({
           </button>
         </form>
         <p className="text-xs text-zinc-600">O crédito é usado automaticamente nos próximos pedidos da pessoa e vence como os demais.</p>
+
+        <h3 className="pt-2 font-medium">Lotes com saldo</h3>
+        {carteira.lotes.length === 0 ? (
+          <p className="text-zinc-600">Nenhum crédito válido.</p>
+        ) : (
+          <ul className="divide-y divide-zinc-200">
+            {carteira.lotes.map((l) => (
+              <li key={l.id} className="flex flex-wrap items-center gap-x-3 py-2">
+                <strong className="font-medium">{formatarReais(l.saldoCentavos)}</strong>
+                <span className="text-zinc-600">de {formatarReais(l.valorInicialCentavos)} · {ROTULO_ORIGEM_CREDITO[l.origem] ?? l.origem}</span>
+                <span className="ml-auto text-zinc-600">vence em {descreverMomento(l.validadeAte)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <h3 className="pt-2 font-medium">Últimos movimentos</h3>
+        {carteira.extrato.length === 0 ? (
+          <p className="text-zinc-600">Sem movimentos.</p>
+        ) : (
+          <ul className="divide-y divide-zinc-200">
+            {carteira.extrato.slice(0, 15).map((m) => (
+              <li key={m.id} className="flex flex-wrap items-center gap-x-3 py-2">
+                <span className="text-zinc-600">{descreverMomento(m.criadoEm)}</span>
+                <span>{ROTULO_MOVIMENTO[m.tipo] ?? m.tipo}</span>
+                <strong className="ml-auto font-medium">{m.valorCentavos > 0 ? '+' : '−'}{formatarReais(Math.abs(m.valorCentavos))}</strong>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section aria-label="Histórico" className="card p-5">
