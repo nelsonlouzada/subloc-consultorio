@@ -55,6 +55,7 @@ export async function obterProfissional(id: string) {
       nome: schema.usuario.name,
       email: schema.usuario.email,
       emailVerificado: schema.usuario.emailVerified,
+      acessoAtivo: schema.usuario.ativo,
       telefone: schema.usuario.telefone,
       cpf: schema.profissional.cpf,
       profissao: schema.profissional.profissao,

@@ -7,7 +7,7 @@ import { linkConsultaConselho } from '@/modulos/identidade/conselhos';
 import { PROFISSOES, STATUS_PROFISSIONAL } from '@/modulos/identidade/opcoes';
 import { formatarReais } from '@/lib/dinheiro';
 import { saldoDisponivel } from '@/modulos/carteira/carteira';
-import { aprovarAction, bloquearAction, concederCreditoAction, desbloquearAction, recusarAction } from '../actions';
+import { aprovarAction, bloquearAction, concederCreditoAction, desativarAcessoAction, desbloquearAction, reativarAcessoAction, recusarAction } from '../actions';
 
 export const metadata = { title: 'Profissional' };
 
@@ -17,6 +17,8 @@ const ACOES: Record<string, string> = {
   bloquear: 'Profissional bloqueado.',
   desbloquear: 'Profissional desbloqueado.',
   credito: 'Crédito concedido. O profissional foi avisado por e-mail.',
+  acesso_desativado: 'Acesso desativado: o login foi fechado e as sessões abertas foram encerradas.',
+  acesso_reativado: 'Acesso reativado: a pessoa pode entrar de novo.',
 };
 const ERROS_CREDITO: Record<string, string> = {
   credito_valor: 'Valor inválido. Use reais, por exemplo 50 ou 50,00 (até R$ 10.000).',
@@ -29,6 +31,8 @@ const NOME_ACAO: Record<string, string> = {
   profissional_recusado: 'Recusado',
   profissional_bloqueado: 'Bloqueado',
   credito_manual: 'Crédito concedido',
+  acesso_desativado: 'Acesso desativado',
+  acesso_reativado: 'Acesso reativado',
 };
 
 const quando = (d: Date) =>
@@ -157,6 +161,33 @@ export default async function DetalheProfissional({
             <input type="hidden" name="id" value={p.id} />
             <button type="submit" className={`${botao} btn-primary`}>
               Desbloquear
+            </button>
+          </form>
+        )}
+      </section>
+
+      <section className="space-y-3 card p-5 text-sm">
+        <h2 className="font-semibold">Acesso à conta</h2>
+        {p.acessoAtivo ? (
+          <form action={desativarAcessoAction} className="space-y-2">
+            <input type="hidden" name="id" value={p.id} />
+            <p className="text-zinc-700">A conta pode entrar no sistema. Desativar o acesso fecha o login e encerra as sessões abertas. As reservas futuras continuam: você decide o que fazer com elas.</p>
+            <label htmlFor="motivo-acesso" className="block text-xs text-zinc-600">
+              Motivo (só fica no histórico)
+            </label>
+            <input id="motivo-acesso" name="motivo" maxLength={300} autoComplete="off" className="w-full rounded-lg border border-zinc-300 px-3 py-2" />
+            <button type="submit" className={`${botao} btn-destructive`}>
+              Desativar o acesso
+            </button>
+          </form>
+        ) : (
+          <form action={reativarAcessoAction} className="space-y-2">
+            <input type="hidden" name="id" value={p.id} />
+            <p className="text-zinc-700">
+              <strong>Acesso desativado.</strong> A pessoa não consegue entrar.
+            </p>
+            <button type="submit" className={`${botao} btn-primary`}>
+              Reativar o acesso
             </button>
           </form>
         )}

@@ -37,9 +37,11 @@ function Formulario() {
       setErro(
         error.code === 'EMAIL_NOT_VERIFIED'
           ? 'Confirme seu e-mail antes de entrar. Enviamos um novo link para o seu endereço (confira também a caixa de spam).'
-          : error.status === 429
-            ? 'Muitas tentativas. Aguarde um instante e tente de novo.'
-            : 'E-mail ou senha incorretos.',
+          : error.code === 'CONTA_DESATIVADA'
+            ? 'Esta conta está desativada. Fale com os responsáveis pela sala.'
+            : error.status === 429
+              ? 'Muitas tentativas. Aguarde um instante e tente de novo.'
+              : 'E-mail ou senha incorretos.',
       );
       return;
     }

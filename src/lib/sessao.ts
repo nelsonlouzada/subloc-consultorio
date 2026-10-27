@@ -2,10 +2,13 @@ import { eq } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { db, schema } from '@/db';
+import { contaAtiva } from '@/modulos/identidade/acesso';
 import { auth } from './auth';
 
 export async function sessaoAtual() {
-  return auth.api.getSession({ headers: await headers() });
+  const sessao = await auth.api.getSession({ headers: await headers() });
+  // Conta desativada perde o acesso na hora, mesmo com a sessão ainda aberta em algum aparelho.
+  return contaAtiva(sessao?.user) ? sessao : null;
 }
 
 /** Para onde cada papel vai depois de entrar. */

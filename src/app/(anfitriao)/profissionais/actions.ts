@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { contextoRequisicao, exigirAnfitriao } from '@/lib/sessao';
 import { reaisParaCentavos } from '@/lib/dinheiro';
 import { carregarSala } from '@/modulos/configuracao/espaco';
+import { AcessoInvalidoError, desativarAcesso, reativarAcesso } from '@/modulos/identidade/acesso';
 import { CreditoManualInvalidoError, concederCreditoManual, ProfissionalSemCadastroError } from '@/modulos/carteira/manual';
 import {
   aprovarProfissional,
@@ -77,3 +78,27 @@ export async function concederCreditoAction(formData: FormData) {
   }
   redirect(`/profissionais/${encodeURIComponent(id.data)}?${resultado}`);
 }
+
+/** Fecha ou reabre o login do profissional (T23). Diferente de bloquear, que só impede novas reservas. */
+async function mudarAcessoAction(ativar: boolean, formData: FormData): Promise<never> {
+  const sessao = await exigirAnfitriao();
+  const lido = esquema.safeParse({ id: formData.get('id'), motivo: formData.get('motivo') ?? undefined });
+  if (!lido.success) redirect('/profissionais');
+  const { id, motivo } = lido.data;
+  const { ip } = await contextoRequisicao();
+
+  let resultado: string;
+  try {
+    if (ativar) await reativarAcesso(id, sessao.user.id, ip);
+    else await desativarAcesso(id, sessao.user.id, motivo, ip);
+    resultado = `aviso=${ativar ? 'acesso_reativado' : 'acesso_desativado'}`;
+  } catch (e) {
+    if (!(e instanceof AcessoInvalidoError)) throw e;
+    if (e.motivo === 'nao_encontrado') redirect('/profissionais');
+    resultado = 'erro=estado';
+  }
+  redirect(`/profissionais/${encodeURIComponent(id)}?${resultado}`);
+}
+
+export const desativarAcessoAction = async (f: FormData) => mudarAcessoAction(false, f);
+export const reativarAcessoAction = async (f: FormData) => mudarAcessoAction(true, f);
