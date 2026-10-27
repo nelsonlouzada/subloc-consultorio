@@ -2,13 +2,12 @@
 
 import Link from 'next/link';
 import { Suspense, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { authClient } from '@/lib/auth-client';
 import { DESTINO_APOS_CONFIRMAR } from '@/lib/confirmacao';
 import { usePronto } from '@/lib/usePronto';
 
 function Formulario() {
-  const router = useRouter();
   const params = useSearchParams();
   const [erro, setErro] = useState<string | null>(
     params.get('erro') === 'acesso' ? 'Esta conta não tem acesso à área do Anfitrião.' : null,
@@ -45,8 +44,8 @@ function Formulario() {
       );
       return;
     }
-    router.push('/');
-    router.refresh();
+    // Navegação completa: a raiz é a página pública para quem não entrou, e o roteador poderia reaproveitá-la.
+    window.location.assign('/');
   }
 
   async function reenviar() {
