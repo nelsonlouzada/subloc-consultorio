@@ -251,3 +251,11 @@ Para o deploy: a migração 0009 roda sozinha no pré-deploy. O worker ganhou os
 
 Fica para depois: ajuste de uma série já aprovada (hoje se cancela e se pede de novo), cobrança por cartão recorrente (fase 2) e a tela da T26 para editar o desconto do pacote do mês e o aviso de renovação (hoje em `regra_espaco`).
 
+
+### E6, em andamento (2026-10-27)
+
+Feito e verificado no navegador, com testes (429 no total):
+- **T26 Configurações** (`/configuracoes`), em abas: *Regras e prazos* (funcionamento, antecedência, prazos, **política de cancelamento**, validade do crédito, desconto do pacote, avisos), *Preços* (valores novos valem a partir de uma data, com histórico e agendamento; reservas já feitas mantêm o valor), *Turnos* (nome, horário, ativo; turno antigo é desativado, nunca apagado), *Sala e página* (nome, descrição, endereço e comodidades), *Contrato e termo* (publicar versão nova; a publicada nunca é editada e quem já aceitou fica na versão dele), *Pagamento* e *Anfitriões* (só leitura: chaves ficam no Railway, contas de Anfitrião são criadas por script). Toda mudança grava antes e depois na auditoria, com quem fez e o IP.
+- **T25 Financeiro** (`/financeiro`): resumo do mês (recebido, crédito usado e vencido, créditos em aberto, ocupação), por profissional, lançamentos com link do recibo e **exportação em CSV para o carnê-leão** (`/api/financeiro/carne-leao?mes=AAAA-MM`: data, nome e CPF do pagador, descrição, meio, valor e recibo, com total). Regime de caixa: conta o dinheiro quando entra, e pagamento só com crédito não entra. Cada exportação fica na auditoria porque leva CPF. **Confirmar com o contador** como tratar o crédito comprado e ainda não usado.
+
+Falta da E6: página pública da sala (T01, com fotos no Cloudflare R2 e SEO), auditoria e T23 completa, política de privacidade e textos finais revisados por advogado, e o login recusar usuário com `ativo = false` (hoje esse campo só controla quem recebe os avisos por e-mail).
