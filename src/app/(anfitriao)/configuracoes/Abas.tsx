@@ -7,6 +7,10 @@ const ABAS = [
   ['/configuracoes', 'Regras e prazos'],
   ['/configuracoes/precos', 'Preços'],
   ['/configuracoes/turnos', 'Turnos'],
+  ['/configuracoes/sala', 'Sala e página'],
+  ['/configuracoes/documentos', 'Contrato e termo'],
+  ['/configuracoes/pagamento', 'Pagamento'],
+  ['/configuracoes/equipe', 'Anfitriões'],
 ] as const;
 
 export default function Abas() {
